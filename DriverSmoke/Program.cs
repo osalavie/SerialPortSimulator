@@ -3,7 +3,13 @@ using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 using SerialPortSimulator.Services;
 
-VirtualDeviceInfo device = VirtualDeviceClient.EnumerateDevices().FirstOrDefault()
+var devices = VirtualDeviceClient.EnumerateDevices();
+string? instanceFilter = args.Length >= 2 &&
+    args[0].Equals("--instance", StringComparison.OrdinalIgnoreCase) ? args[1] : null;
+VirtualDeviceInfo device = (instanceFilter is null
+        ? devices.FirstOrDefault()
+        : devices.FirstOrDefault(item => item.InstanceId.Equals(
+            instanceFilter, StringComparison.OrdinalIgnoreCase)))
     ?? throw new InvalidOperationException("No Serial Port Simulator device was found.");
 
 Console.WriteLine($"Testing {device.PortName} ({device.InstanceId})");

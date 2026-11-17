@@ -18,6 +18,25 @@ if (!$SkipDriverBuild) {
     & (Join-Path $PSScriptRoot 'Build-Driver.ps1') -Configuration Debug -TestSign
 }
 
+$driverOutput = Join-Path $repoRoot 'VirtualSerial\x64\Debug\VirtualSerial2um'
+$catalogPath = Join-Path $driverOutput 'wudf.cat'
+$certificatePath = Join-Path $repoRoot 'VirtualSerial\x64\Debug\VirtualSerial2um.cer'
+if (!(Test-Path -LiteralPath $catalogPath)) {
+    throw "Driver catalog is missing: $catalogPath"
+}
+$signature = Get-AuthenticodeSignature -LiteralPath $catalogPath
+if (!$signature.SignerCertificate) {
+    throw 'Driver catalog is not signed. Run .\tools\Build-Driver.ps1 -Configuration Debug -TestSign first.'
+}
+if (!(Test-Path -LiteralPath $certificatePath)) {
+    throw "Driver certificate is missing: $certificatePath"
+}
+$certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
+    (Resolve-Path -LiteralPath $certificatePath).Path)
+if ($certificate.Thumbprint -ne $signature.SignerCertificate.Thumbprint) {
+    throw 'Driver catalog signer does not match the packaged certificate.'
+}
+
 if (Test-Path -LiteralPath $appRoot) {
     $resolvedDist = [System.IO.Path]::GetFullPath((Join-Path $repoRoot 'dist')).TrimEnd('\') + '\'
     $resolvedApp = (Resolve-Path -LiteralPath $appRoot).Path
@@ -49,8 +68,7 @@ dotnet publish (Join-Path $repoRoot 'DeviceManager\SerialPortSimulator.DeviceMan
     -p:Platform=x64 `
     -p:PublishSingleFile=true `
     -p:IncludeNativeLibrariesForSelfExtract=true `
-    -p:PublishTrimmed=true `
-    -p:TrimMode=link `
+    -p:PublishTrimmed=false `
     -p:InvariantGlobalization=true `
     -p:DebugType=None `
     -p:DebugSymbols=false `
@@ -70,8 +88,17 @@ dotnet publish (Join-Path $repoRoot 'TestClient\SerialPortSimulator.TestClient.c
 if ($LASTEXITCODE -ne 0) { throw 'Test client publish failed.' }
 
 Copy-Item -LiteralPath (Join-Path $repoRoot 'README.md') -Destination $appRoot -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot 'README.zh-CN.md') -Destination $appRoot -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination $appRoot -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE.zh-CN.md') -Destination $appRoot -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot 'THIRD-PARTY-NOTICES.md') -Destination $appRoot -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot 'THIRD-PARTY-NOTICES.zh-CN.md') -Destination $appRoot -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot 'docs') -Destination $appRoot -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot 'VirtualSerial\LICENSE.microsoft.txt') -Destination $appRoot -Force
+$virtualSerialLicenseDir = Join-Path $appRoot 'VirtualSerial'
+New-Item -ItemType Directory -Path $virtualSerialLicenseDir -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $repoRoot 'VirtualSerial\LICENSE.microsoft.txt') `
+    -Destination (Join-Path $virtualSerialLicenseDir 'LICENSE.microsoft.txt') -Force
 
 $zipPath = Join-Path $distRoot "$packageName.zip"
 Compress-Archive -Path $appRoot -DestinationPath $zipPath -Force

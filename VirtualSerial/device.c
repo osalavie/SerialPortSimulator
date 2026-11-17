@@ -73,6 +73,8 @@ DeviceCreate(
     deviceContext = GetDeviceContext(device);
     deviceContext->Device = device;
     deviceContext->BaudRate = 9600;
+    deviceContext->DtrOn = FALSE;
+    deviceContext->RtsOn = FALSE;
     deviceContext->LineControlRegister =
         SERIAL_8_DATA | SERIAL_NONE_PARITY | SERIAL_1_STOP;
     deviceContext->ValidDataMask = 0xff;

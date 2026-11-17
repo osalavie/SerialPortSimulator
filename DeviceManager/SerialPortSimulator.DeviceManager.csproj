@@ -24,8 +24,5 @@
     <EmbeddedResource Include="..\VirtualSerial\x64\Debug\VirtualSerial2um.cer"
                       LogicalName="SerialPortSimulator.DeviceManager.DriverResources.VirtualSerial2um.cer"
                       Condition="Exists('..\VirtualSerial\x64\Debug\VirtualSerial2um.cer')" />
-    <EmbeddedResource Include="..\VirtualSerial\packages\Microsoft.Windows.WDK.x64.10.0.28000.2526\c\tools\10.0.28000.0\x64\devcon.exe"
-                      LogicalName="SerialPortSimulator.DeviceManager.DriverResources.devcon.exe"
-                      Condition="Exists('..\VirtualSerial\packages\Microsoft.Windows.WDK.x64.10.0.28000.2526\c\tools\10.0.28000.0\x64\devcon.exe')" />
   </ItemGroup>
 </Project>

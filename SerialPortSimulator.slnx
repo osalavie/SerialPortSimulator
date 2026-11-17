@@ -1,0 +1,17 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="DeviceManager/SerialPortSimulator.DeviceManager.csproj">
+    <BuildDependency Project="VirtualSerial/VirtualSerial2um.vcxproj" />
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="DriverSmoke/DriverSmoke.csproj" />
+  <Project Path="SerialPortSimulator/SerialPortSimulator.csproj">
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="TestClient/SerialPortSimulator.TestClient.csproj">
+    <Platform Project="x64" />
+  </Project>
+  <Project Path="VirtualSerial/VirtualSerial2um.vcxproj" />
+</Solution>

@@ -4,7 +4,7 @@
 ; VirtualSerial2um.inf
 ;
 ; Installation Notes:
-;    Type "devcon install VirtualSerial2um.inf ROOT\SerialPortSimulator" to install
+;    The device manager installs this INF through Windows SetupAPI.
 ;
 ; Important:
 ;     This INF depends on features for the Driver Store DIRIDs which are available starting Windows 10 1803
@@ -91,6 +91,7 @@ ServiceBinary=%13%\Virtualserial2um.dll
 
 [SetDeviceType_AddReg]
 HKR,,DeviceType,0x10001,0x0000001b  ; 0x1b = FILE_DEVICE_SERIAL_PORT
+HKR,,Security,,"D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GRGW;;;AU)"
 
 [UMDriverCopy]
 Virtualserial2um.dll

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using SerialPortSimulator.Services;
@@ -11,6 +12,7 @@ public sealed partial class MainWindow : Window
 
     private readonly DataGenerator _generator = new();
     private readonly List<(DateTime Timestamp, string Data)> _dataRecords = new();
+    private readonly DispatcherQueueTimer _lineStateTimer;
     private VirtualDeviceSession? _session;
     private CancellationTokenSource? _sendCancellation;
     private Task? _sendLoop;
@@ -23,6 +25,10 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1040, 900));
+        _lineStateTimer = DispatcherQueue.GetForCurrentThread().CreateTimer();
+        _lineStateTimer.Interval = TimeSpan.FromMilliseconds(300);
+        _lineStateTimer.Tick += (_, _) => UpdateBusinessLineState();
+        _lineStateTimer.Start();
         Closed += MainWindow_Closed;
         RefreshDevices();
     }
@@ -79,9 +85,6 @@ public sealed partial class MainWindow : Window
             startInfo.ArgumentList.Add("--instance-id");
             startInfo.ArgumentList.Add(instanceId);
         }
-        startInfo.ArgumentList.Add("--app-root");
-        startInfo.ArgumentList.Add(applicationDirectory);
-
         _deviceManagementBusy = true;
         UpdateControls();
         try
@@ -130,19 +133,33 @@ public sealed partial class MainWindow : Window
         _ => "虚拟设备已删除"
     };
 
-    private static string GetDeviceManagerError(int exitCode) => exitCode switch
+    private static string GetDeviceManagerError(int exitCode)
     {
-        10 => "设备管理参数无效。",
-        11 => "驱动包不完整，请检查 DriverPackage 和 tools/devcon.exe。",
-        12 => "测试证书导入失败。",
-        13 => "创建虚拟设备失败。",
-        14 => "安装虚拟串口驱动失败。",
-        15 => "找不到指定虚拟设备。",
-        16 => "拒绝删除非本产品的设备。",
-        17 => "删除虚拟设备失败。",
-        18 => "虚拟设备已删除，但驱动包或测试证书清理失败。",
-        _ => $"设备管理程序异常退出（{exitCode}）。"
-    } + " 详情请查看 C:\\ProgramData\\SerialPortSimulator\\device-manager.log。";
+        string message = exitCode switch
+        {
+            10 => "设备管理参数无效。",
+            11 => "驱动包不完整，请重新生成发行包。",
+            12 => "测试证书导入失败。",
+            13 => "创建虚拟设备失败。",
+            14 => "安装虚拟串口驱动失败。",
+            15 => "找不到指定虚拟设备。",
+            16 => "拒绝删除非本产品的设备。",
+            17 => "删除虚拟设备失败。",
+            18 => "虚拟设备已删除，但驱动包或测试证书清理失败。",
+            19 => "驱动包未签名或签名证书不匹配，请重新生成发行包。",
+            _ => $"设备管理程序异常退出（{exitCode}）。"
+        };
+        return $"{message} 详情请查看 {GetDeviceManagerLogPath()}。";
+    }
+
+    private static string GetDeviceManagerLogPath()
+    {
+        string? helper = FindDeviceManagerExecutable();
+        string directory = helper is not null
+            ? Path.GetDirectoryName(helper)!
+            : GetApplicationDirectory();
+        return Path.Combine(directory, "Logs", "device-manager.log");
+    }
 
     private static string? FindDeviceManagerExecutable()
     {
@@ -694,11 +711,43 @@ public sealed partial class MainWindow : Window
     private void SetStatus(string message, bool error = false) =>
         StatusText.Text = error ? $"错误：{message}" : message;
 
+    private void UpdateBusinessLineState()
+    {
+        if (_closing) return;
+        if (_session is not { } session)
+        {
+            BusinessLineText.Text = "业务控制线：打开控制通道后读取";
+            return;
+        }
+        if (!session.SupportsLineState)
+        {
+            BusinessLineText.Text = "业务控制线：当前驱动不支持 DTR/RTS 读取，请更新驱动";
+            return;
+        }
+
+        try
+        {
+            SimulatorLineState state = session.GetLineState();
+            BusinessLineText.Text =
+                $"业务控制线：DTR {(state.Dtr ? "有效" : "无效")} · " +
+                $"RTS {(state.Rts ? "有效" : "无效")} · " +
+                $"RTS/CTS 流控 {(state.CtsHandshake ? "开启" : "关闭")}";
+        }
+        catch (Exception ex)
+        {
+            BusinessLineText.Text = $"业务控制线读取失败：{ex.Message}";
+        }
+    }
+
     private void CloseSession()
     {
         VirtualDeviceSession? session = _session;
         _session = null;
-        if (!_closing) InjectionTargetText.Text = "注入目标：未连接";
+        if (!_closing)
+        {
+            InjectionTargetText.Text = "注入目标：未连接";
+            BusinessLineText.Text = "业务控制线：打开控制通道后读取";
+        }
         if (session is null) return;
         session.BusinessDataReceived -= Session_BusinessDataReceived;
         session.ResponseSent -= Session_ResponseSent;
@@ -709,6 +758,7 @@ public sealed partial class MainWindow : Window
     private void MainWindow_Closed(object sender, WindowEventArgs args)
     {
         _closing = true;
+        _lineStateTimer.Stop();
         _sendCancellation?.Cancel();
         CloseSession();
     }

@@ -1,0 +1,1424 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>串口连续数据流 · 角色动画</title>
+  <style>
+    :root {
+      --background: #edf1f3;
+      --foreground: #172026;
+      --surface: rgba(255, 255, 255, 0.95);
+      --surface-solid: #ffffff;
+      --muted: #e5eaed;
+      --muted-foreground: #5b6870;
+      --border: #cfd8dc;
+      --blue: #176b87;
+      --blue-soft: rgba(23, 107, 135, 0.12);
+      --orange: #b45d16;
+      --orange-soft: rgba(180, 93, 22, 0.14);
+      --red: #b13732;
+      --red-soft: rgba(177, 55, 50, 0.13);
+      --green: #247451;
+      --green-soft: rgba(36, 116, 81, 0.13);
+      --shadow: 0 24px 78px rgba(30, 47, 55, 0.11);
+      --mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+      --sans: "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --background: #0c1216;
+        --foreground: #eaf0f3;
+        --surface: rgba(21, 30, 35, 0.95);
+        --surface-solid: #151e23;
+        --muted: #202b31;
+        --muted-foreground: #a0b0b8;
+        --border: #2c3a42;
+        --blue: #6fc7e0;
+        --blue-soft: rgba(111, 199, 224, 0.12);
+        --orange: #f0a45a;
+        --orange-soft: rgba(240, 164, 90, 0.14);
+        --red: #ef8179;
+        --red-soft: rgba(239, 129, 121, 0.14);
+        --green: #77cda4;
+        --green-soft: rgba(119, 205, 164, 0.13);
+        --shadow: 0 24px 90px rgba(0, 0, 0, 0.35);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      background:
+        radial-gradient(circle at 8% 0%, var(--blue-soft), transparent 32rem),
+        radial-gradient(circle at 96% 8%, var(--orange-soft), transparent 30rem),
+        var(--background);
+      color: var(--foreground);
+      font-family: var(--sans);
+      line-height: 1.5;
+    }
+
+    button { font: inherit; color: inherit; }
+    p { margin: 0; }
+
+    .page {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 20px 0 58px;
+    }
+
+    .workbench {
+      padding: 19px;
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .clocks { display: flex; flex: 0 0 auto; gap: 6px; }
+
+    .clock {
+      min-width: 104px;
+      padding: 7px 10px;
+      border-radius: 9px;
+      background: var(--muted);
+    }
+
+    .clock span { display: block; color: var(--muted-foreground); font-size: 0.6rem; }
+    .clock strong {
+      display: block;
+      font-family: var(--mono);
+      font-size: 0.77rem;
+      font-variant-numeric: tabular-nums;
+      font-weight: 520;
+    }
+
+    .scenario-tabs {
+      display: flex;
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow-x: auto;
+      white-space: nowrap;
+      gap: 6px;
+    }
+
+    .scenario-tab {
+      flex: 0 0 auto;
+      min-height: 35px;
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--surface-solid);
+      cursor: pointer;
+      font-size: 0.74rem;
+    }
+
+    .scenario-tab:hover { background: var(--muted); }
+    .scenario-tab[aria-pressed="true"] {
+      border-color: transparent;
+      background: var(--foreground);
+      color: var(--background);
+    }
+
+    .path {
+      margin-top: 13px;
+      border-radius: 15px;
+    }
+
+    .path.bad { background: var(--red-soft); }
+    .path.good { background: var(--green-soft); }
+
+    .path-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 12px;
+    }
+
+    .path-label {
+      display: flex;
+      gap: 7px;
+      align-items: center;
+      font-family: var(--mono);
+      font-size: 0.66rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .path.bad .path-label { color: var(--red); }
+    .path.good .path-label { color: var(--green); }
+
+    .path-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .path-status {
+      color: var(--muted-foreground);
+      font-family: var(--mono);
+      font-size: 0.66rem;
+      text-align: right;
+    }
+
+    .canvas-wrap {
+      padding: 0 10px 10px;
+    }
+
+    .stage-canvas {
+      display: block;
+      width: 100%;
+      height: 280px;
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
+    }
+
+    .timeline {
+      margin-top: 13px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: var(--muted);
+    }
+
+    .timeline-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 7px;
+      color: var(--muted-foreground);
+      font-size: 0.64rem;
+    }
+
+    .timeline-head strong { color: var(--foreground); font-weight: 520; }
+
+    .timeline-rail { position: relative; height: 26px; }
+
+    .timeline-track {
+      position: absolute;
+      top: 11px;
+      left: 0;
+      right: 0;
+      height: 5px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--border);
+    }
+
+    .timeline-fill {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--blue);
+    }
+
+    .timeline-events {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .timeline-event {
+      position: absolute;
+      top: 1px;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      transform: translateX(-50%);
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+
+    .timeline-event::before {
+      content: "";
+      display: block;
+      width: 13px;
+      height: 13px;
+      margin: auto;
+      border: 2px solid var(--blue);
+      border-radius: 50%;
+      background: var(--surface-solid);
+      box-shadow: 0 0 0 2px var(--muted);
+    }
+
+    .timeline-event.past::before { background: var(--blue); }
+    .timeline-event.active::before {
+      background: var(--orange);
+      border-color: var(--orange);
+      box-shadow: 0 0 0 3px var(--orange-soft);
+    }
+
+    .timeline-event:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+
+    .timeline-tooltip {
+      position: fixed;
+      z-index: 20;
+      width: max-content;
+      max-width: min(260px, calc(100vw - 20px));
+      padding: 9px 11px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--surface-solid);
+      box-shadow: var(--shadow);
+      color: var(--foreground);
+      font-size: 0.72rem;
+      line-height: 1.45;
+      pointer-events: none;
+    }
+
+    .timeline-tooltip[hidden] { display: none; }
+    .timeline-tooltip p + p { margin-top: 4px; }
+    .timeline-tooltip time { color: var(--blue); font-family: var(--mono); }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      margin-top: 11px;
+    }
+
+    .button-row, .scale-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .button, .scale-option {
+      min-height: 35px;
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface-solid);
+      cursor: pointer;
+      font-size: 0.7rem;
+    }
+
+    .button:hover, .scale-option:hover { background: var(--muted); }
+    .button.primary {
+      border-color: transparent;
+      background: var(--foreground);
+      color: var(--background);
+    }
+
+    .scale-row { color: var(--muted-foreground); font-size: 0.66rem; }
+    .scale-option {
+      min-height: 30px;
+      padding: 4px 8px;
+      font-family: var(--mono);
+      font-size: 0.62rem;
+    }
+
+    .scale-option[aria-pressed="true"] {
+      border-color: transparent;
+      background: var(--orange);
+      color: #fff;
+    }
+
+    @media (max-width: 760px) {
+      .clocks { flex-direction: column; }
+      .clock { padding: 3px 7px; }
+      .canvas-wrap { overflow-x: auto; }
+      .stage-canvas { min-width: 700px; }
+    }
+
+    @media (max-width: 520px) {
+      .page { width: min(100% - 20px, 1120px); padding-top: 12px; }
+      .workbench { padding: 12px; border-radius: 17px; }
+      .scenario-tab { font-size: 0.66rem; }
+      .canvas-wrap { padding: 0 5px 6px; }
+      .controls { align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <main class="workbench">
+      <div class="toolbar">
+        <nav class="scenario-tabs" aria-label="问题场景">
+          <button class="scenario-tab" type="button" data-scenario="partial" aria-pressed="true">读取不完整</button>
+          <button class="scenario-tab" type="button" data-scenario="utf8" aria-pressed="false">UTF-8 截断</button>
+          <button class="scenario-tab" type="button" data-scenario="coalesce" aria-pressed="false">消息粘连</button>
+          <button class="scenario-tab" type="button" data-scenario="overflow" aria-pressed="false">缓存溢出</button>
+          <button class="scenario-tab" type="button" data-scenario="mismatch" aria-pressed="false">参数不一致</button>
+          <button class="scenario-tab" type="button" data-scenario="cts" aria-pressed="false">CTS 阻塞</button>
+        </nav>
+        <div class="clocks" aria-label="时间">
+          <div class="clock"><span>串口时间</span><strong id="serial-clock">0.0 ms</strong></div>
+          <div class="clock"><span>动画时间</span><strong id="animation-clock">0.0 s</strong></div>
+        </div>
+      </div>
+
+      <section class="path bad">
+        <div class="path-head">
+          <div class="path-label"><span class="path-dot"></span>故障路径</div>
+          <div class="path-status" id="problem-status"></div>
+        </div>
+        <div class="canvas-wrap">
+          <canvas class="stage-canvas" id="problem-canvas" role="img" aria-label="故障角色动画"></canvas>
+        </div>
+      </section>
+
+      <section class="path good">
+        <div class="path-head">
+          <div class="path-label"><span class="path-dot"></span>修复路径</div>
+          <div class="path-status" id="solution-status"></div>
+        </div>
+        <div class="canvas-wrap">
+          <canvas class="stage-canvas" id="solution-canvas" role="img" aria-label="修复角色动画"></canvas>
+        </div>
+      </section>
+
+      <div class="timeline">
+        <div class="timeline-head">
+          <span>真实串口时间轴</span>
+          <strong id="timeline-status">等待开始</strong>
+        </div>
+        <div class="timeline-rail">
+          <div class="timeline-track" role="progressbar" aria-label="场景进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="timeline-progress">
+            <div class="timeline-fill" id="timeline-fill"></div>
+          </div>
+          <div class="timeline-events" id="timeline-events"></div>
+        </div>
+        <div class="timeline-tooltip" id="timeline-tooltip" role="tooltip" hidden></div>
+      </div>
+
+      <div class="controls">
+        <div class="button-row">
+          <button class="button primary" id="play-toggle" type="button" aria-pressed="true">暂停</button>
+          <button class="button" id="replay" type="button">重放</button>
+        </div>
+        <div class="scale-row" role="group" aria-label="时间放慢倍率">
+          <span>放慢倍率</span>
+          <button class="scale-option" type="button" data-scale="200" aria-pressed="false">200×</button>
+          <button class="scale-option" type="button" data-scale="800" aria-pressed="true">800×</button>
+          <button class="scale-option" type="button" data-scale="1600" aria-pressed="false">1600×</button>
+          <button class="scale-option" type="button" data-scale="3200" aria-pressed="false">3200×</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      const encoded = Array.from(new TextEncoder().encode("模拟设备数据"));
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const canvases = {
+        problem: document.getElementById("problem-canvas"),
+        solution: document.getElementById("solution-canvas")
+      };
+      const controls = {
+        serialClock: document.getElementById("serial-clock"),
+        animationClock: document.getElementById("animation-clock"),
+        problemStatus: document.getElementById("problem-status"),
+        solutionStatus: document.getElementById("solution-status"),
+        timelineProgress: document.getElementById("timeline-progress"),
+        timelineFill: document.getElementById("timeline-fill"),
+        timelineEvents: document.getElementById("timeline-events"),
+        timelineTooltip: document.getElementById("timeline-tooltip"),
+        timelineStatus: document.getElementById("timeline-status"),
+        playToggle: document.getElementById("play-toggle"),
+        replay: document.getElementById("replay"),
+        tabs: Array.from(document.querySelectorAll(".scenario-tab")),
+        scales: Array.from(document.querySelectorAll(".scale-option"))
+      };
+
+      // The workbench uses backdrop-filter, which otherwise makes a fixed tooltip
+      // position relative to the workbench instead of the viewport.
+      document.body.append(controls.timelineTooltip);
+
+      const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+      const formatTime = ms => ms < 1000 ? `${ms.toFixed(1)} ms` : `${(ms / 1000).toFixed(2)} s`;
+
+      function themeColors() {
+        const style = getComputedStyle(document.documentElement);
+        return {
+          foreground: style.getPropertyValue("--foreground").trim(),
+          surface: style.getPropertyValue("--surface-solid").trim(),
+          muted: style.getPropertyValue("--muted").trim(),
+          mutedText: style.getPropertyValue("--muted-foreground").trim(),
+          border: style.getPropertyValue("--border").trim(),
+          blue: style.getPropertyValue("--blue").trim(),
+          blueSoft: style.getPropertyValue("--blue-soft").trim(),
+          orange: style.getPropertyValue("--orange").trim(),
+          orangeSoft: style.getPropertyValue("--orange-soft").trim(),
+          red: style.getPropertyValue("--red").trim(),
+          redSoft: style.getPropertyValue("--red-soft").trim(),
+          green: style.getPropertyValue("--green").trim(),
+          greenSoft: style.getPropertyValue("--green-soft").trim()
+        };
+      }
+
+      function roundRect(ctx, x, y, width, height, radius) {
+        const r = Math.min(radius, width / 2, height / 2);
+        ctx.beginPath();
+        ctx.roundRect(x, y, width, height, r);
+      }
+
+      function fitText(ctx, text, maxWidth) {
+        if (ctx.measureText(text).width <= maxWidth) return text;
+        let value = text;
+        while (value.length > 1 && ctx.measureText(`${value}…`).width > maxWidth) {
+          value = value.slice(0, -1);
+        }
+        return `${value}…`;
+      }
+
+      function prepareCanvas(canvas) {
+        const width = Math.max(1, canvas.clientWidth);
+        const height = Math.max(1, canvas.clientHeight);
+        const dpr = window.devicePixelRatio || 1;
+        if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
+          canvas.width = Math.round(width * dpr);
+          canvas.height = Math.round(height * dpr);
+        }
+        const ctx = canvas.getContext("2d");
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, width, height);
+        return { ctx, width, height };
+      }
+
+      function actorLayout(width) {
+        const gap = width < 520 ? 17 : width * 0.035;
+        const side = Math.max(67, width * 0.225);
+        const center = width - side * 2 - gap * 2;
+        return {
+          left: { x: 0, width: side },
+          wire1: { x: side, width: gap },
+          center: { x: side + gap, width: center },
+          wire2: { x: side + gap + center, width: gap },
+          right: { x: side + gap + center + gap, width: side },
+          gap
+        };
+      }
+
+      function drawActor(ctx, rect, title, badge, colors, tone = "neutral", boxHeight = 204) {
+        const accent = tone === "bad" ? colors.red : tone === "good" ? colors.green : colors.border;
+        const fill = tone === "bad" ? colors.redSoft : tone === "good" ? colors.greenSoft : colors.surface;
+        roundRect(ctx, rect.x, 8, rect.width, boxHeight, 12);
+        ctx.fillStyle = fill;
+        ctx.fill();
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = colors.foreground;
+        ctx.font = "500 11px 'Segoe UI', 'Microsoft YaHei UI', sans-serif";
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "left";
+        ctx.fillText(fitText(ctx, title, rect.width - 16), rect.x + 9, 26);
+
+        ctx.fillStyle = tone === "bad" ? colors.red : tone === "good" ? colors.green : colors.mutedText;
+        ctx.font = "9px 'Cascadia Code', Consolas, monospace";
+        ctx.textAlign = "right";
+        ctx.fillText(fitText(ctx, badge, rect.width - 15), rect.x + rect.width - 9, 26);
+
+        return {
+          x: rect.x + 8,
+          y: 39,
+          width: rect.width - 16,
+          height: boxHeight - 42
+        };
+      }
+
+      function drawWire(ctx, rect, y, color, tokens = []) {
+        const start = rect.x + 2;
+        const end = rect.x + rect.width - 3;
+        ctx.beginPath();
+        ctx.moveTo(start, y);
+        ctx.lineTo(end, y);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(end - 5, y - 4);
+        ctx.lineTo(end, y);
+        ctx.lineTo(end - 5, y + 4);
+        ctx.strokeStyle = color;
+        ctx.stroke();
+
+        for (const token of tokens) {
+          if (token.visible === false) continue;
+          const progress = clamp(token.progress, 0, 1);
+          const x = start + (end - start) * progress;
+          ctx.beginPath();
+          ctx.arc(x, y, token.radius || 4, 0, Math.PI * 2);
+          ctx.fillStyle = token.color || color;
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(x, y, (token.radius || 4) + 3, 0, Math.PI * 2);
+          ctx.strokeStyle = token.halo || colorsAlpha(token.color || color, 0.18);
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+      }
+
+      function colorsAlpha(color, alpha) {
+        if (color.startsWith("rgba(")) {
+          return color.replace(/rgba\(([^,]+),([^,]+),([^,]+),[^)]+\)/, `rgba($1,$2,$3,${alpha})`);
+        }
+        const probe = document.createElement("span");
+        probe.style.color = color;
+        document.body.appendChild(probe);
+        const rgb = getComputedStyle(probe).color;
+        probe.remove();
+        return rgb.replace("rgb(", "rgba(").replace(")", `, ${alpha})`);
+      }
+
+      function streamTokens(time, count, interval, toneColor) {
+        if (time < 0 || count <= 0) return [];
+        const index = Math.floor(time / interval);
+        if (index >= count) return [];
+        return [{ progress: (time - index * interval) / interval, color: toneColor, radius: 3.5 }];
+      }
+
+      function pacedByteToken(time, count, interval, transit, color) {
+        if (time < 0) return [];
+        const index = Math.floor(time / interval);
+        const age = time - index * interval;
+        return index < count && age < transit
+          ? [{ progress: age / transit, color, radius: 3.5 }]
+          : [];
+      }
+
+      function continuousTokens(time, interval, color, until = Infinity) {
+        return time >= 0 && time < until
+          ? [{ progress: (time % interval) / interval, color, radius: 3.5 }]
+          : [];
+      }
+
+      function readTokens(time, eventTime, color) {
+        if (time < eventTime || time >= eventTime + 4) return [];
+        return [{ progress: (time - eventTime) / 4, color, radius: 4 }];
+      }
+
+      function drawByteGrid(ctx, x, y, width, count, total, colors, tone = "blue", cut = -1, values = encoded, activeFrom = 0) {
+        const cellWidth = 30;
+        const cellHeight = 26;
+        const gap = 4;
+        const columns = Math.max(1, Math.min(6, Math.floor((width + gap) / (cellWidth + gap))));
+        const visible = Math.min(total, columns * 4);
+        const color = tone === "red" ? colors.red : tone === "green" ? colors.green : colors.blue;
+        const off = tone === "red" ? colors.redSoft : tone === "green" ? colors.greenSoft : colors.muted;
+        for (let index = 0; index < visible; index++) {
+          const column = index % columns;
+          const row = Math.floor(index / columns);
+          const cellX = x + column * (cellWidth + gap);
+          const cellY = y + row * (cellHeight + gap);
+          const active = index >= activeFrom && index < count;
+          roundRect(ctx, cellX, cellY, cellWidth, cellHeight, 4);
+          ctx.fillStyle = index === cut ? colors.red : active ? color : off;
+          ctx.fill();
+
+          const value = values[index] ?? 0;
+          const hexValue = value.toString(16).toUpperCase().padStart(2, "0");
+          ctx.fillStyle = index === cut || active ? colors.surface : colors.mutedText;
+          ctx.font = "11px 'Cascadia Code', Consolas, monospace";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(hexValue, cellX + cellWidth / 2, cellY + cellHeight / 2 + 0.5);
+        }
+        if (visible < total) drawLabel(ctx, `+${total - visible} B`, x, y + 4 * (cellHeight + gap) + 4, width, colors.mutedText, "right", 9);
+        return Math.ceil(visible / columns) * (cellHeight + gap);
+      }
+
+      function drawUtf8Grid(ctx, x, y, width, count, activeFrom, cut, colors, tone) {
+        const cellWidth = 30;
+        const cellHeight = 26;
+        const gap = 4;
+        const columns = Math.max(1, Math.min(6, Math.floor((width + gap) / (cellWidth + gap))));
+        const capacity = columns * 4;
+        const first = Math.max(0, count - capacity);
+        for (let index = first; index < count; index++) {
+          const slot = index - first;
+          const cellX = x + (slot % columns) * (cellWidth + gap);
+          const cellY = y + Math.floor(slot / columns) * (cellHeight + gap);
+          const active = index >= activeFrom;
+          roundRect(ctx, cellX, cellY, cellWidth, cellHeight, 4);
+          ctx.fillStyle = index === cut ? colors.red
+            : active ? tone === "green" ? colors.green : colors.blue : colors.muted;
+          ctx.fill();
+          if (index >= 13) {
+            const hexValue = [0xE6, 0x95, 0xB0][index - 13].toString(16).toUpperCase();
+            ctx.fillStyle = index === cut || active ? colors.surface : colors.mutedText;
+            ctx.font = "11px 'Cascadia Code', Consolas, monospace";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(hexValue, cellX + cellWidth / 2, cellY + cellHeight / 2 + 0.5);
+          }
+        }
+        if (first > 0) drawLabel(ctx, `前 ${first} B`, x, y + 4 * (cellHeight + gap) + 4,
+          width, colors.mutedText, "right", 9);
+      }
+
+      function drawLabel(ctx, text, x, y, width, color, align = "left", size = 9) {
+        ctx.fillStyle = color;
+        ctx.font = `${size}px 'Cascadia Code', Consolas, monospace`;
+        ctx.textAlign = align;
+        ctx.textBaseline = "middle";
+        const anchor = align === "right" ? x + width : align === "center" ? x + width / 2 : x;
+        ctx.fillText(fitText(ctx, text, width), anchor, y);
+      }
+
+      function drawPanel(ctx, body, color) {
+        roundRect(ctx, body.x, body.y, body.width, body.height, 8);
+        ctx.fillStyle = color;
+        ctx.fill();
+      }
+
+      function drawApp(ctx, body, result, colors, tone = "neutral") {
+        drawPanel(ctx, body, colors.muted);
+        roundRect(ctx, body.x + 6, body.y + 8, body.width - 12, 13, 4);
+        ctx.fillStyle = colors.border;
+        ctx.fill();
+        const boxY = body.y + 29;
+        const boxH = Math.min(42, body.height - 34);
+        roundRect(ctx, body.x + 6, boxY, body.width - 12, boxH, 6);
+        ctx.fillStyle = tone === "bad" ? colors.redSoft : tone === "good" ? colors.greenSoft : colors.surface;
+        ctx.fill();
+        ctx.fillStyle = tone === "bad" ? colors.red : tone === "good" ? colors.green : colors.mutedText;
+        ctx.font = "500 9px 'Segoe UI', 'Microsoft YaHei UI', sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(fitText(ctx, result, body.width - 18), body.x + body.width / 2, boxY + boxH / 2);
+      }
+
+      function drawMessage(ctx, x, y, width, text, colors, tone = "blue") {
+        const height = 20;
+        roundRect(ctx, x, y, width, height, 5);
+        ctx.fillStyle = tone === "red" ? colors.redSoft : tone === "green" ? colors.greenSoft : colors.blueSoft;
+        ctx.fill();
+        drawLabel(ctx, text, x + 5, y + height / 2, width - 10,
+          tone === "red" ? colors.red : tone === "green" ? colors.green : colors.blue, "left", 8);
+        return height + 4;
+      }
+
+      function drawReadCard(ctx, x, y, width, label, bytes, decoded, colors, tone = "blue") {
+        const gap = 4;
+        const columns = Math.max(1, Math.min(6, Math.floor((width - 10 + gap) / 34)));
+        const maxRows = width < 180 ? 2 : 3;
+        const visible = Math.min(bytes.length, columns * maxRows);
+        const rows = Math.max(1, Math.ceil(visible / columns));
+        const hidden = bytes.length - visible;
+        const cardHeight = 18 + rows * 30 + (hidden ? 12 : 0) + 19;
+        const accent = tone === "red" ? colors.red : tone === "green" ? colors.green : colors.blue;
+        roundRect(ctx, x, y, width, cardHeight, 7);
+        ctx.fillStyle = colors.surface;
+        ctx.fill();
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        drawLabel(ctx, label, x + 5, y + 9, width - 10, accent, "left", 9);
+        for (let index = 0; index < visible; index++) {
+          const cellX = x + 5 + index % columns * 34;
+          const cellY = y + 18 + Math.floor(index / columns) * 30;
+          roundRect(ctx, cellX, cellY, 30, 26, 4);
+          ctx.fillStyle = accent;
+          ctx.fill();
+          ctx.fillStyle = colors.surface;
+          ctx.font = "11px 'Cascadia Code', Consolas, monospace";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          if (bytes[index] !== null) ctx.fillText(
+            bytes[index].toString(16).toUpperCase().padStart(2, "0"),
+            cellX + 15, cellY + 13);
+        }
+        if (hidden) drawLabel(ctx, `+${hidden} B`, x + 5, y + 18 + rows * 30 + 5,
+          width - 10, colors.mutedText, "right", 8);
+        drawLabel(ctx, decoded, x + 5, y + cardHeight - 10, width - 10,
+          accent, "left", 9);
+        return cardHeight;
+      }
+
+      function drawProgress(ctx, x, y, width, percent, colors, color) {
+        roundRect(ctx, x, y, width, 10, 5);
+        ctx.fillStyle = colors.muted;
+        ctx.fill();
+        if (percent > 0) {
+          roundRect(ctx, x, y, Math.max(3, width * clamp(percent, 0, 1)), 10, 5);
+          ctx.fillStyle = color;
+          ctx.fill();
+        }
+      }
+
+      function drawVolumeBars(ctx, width, produced, consumed, buffered, dropped, colors, note) {
+        const x = 12;
+        const barWidth = width - 24;
+        const scale = value => barWidth * value / 150;
+        drawLabel(ctx, `累计生产 ${produced.toFixed(0)} B`, x, 199, barWidth,
+          colors.orange, "left", 10);
+        roundRect(ctx, x, 210, barWidth, 12, 5);
+        ctx.fillStyle = colors.muted;
+        ctx.fill();
+        if (produced > 0) {
+          roundRect(ctx, x, 210, scale(produced), 12, 5);
+          ctx.fillStyle = colors.orange;
+          ctx.fill();
+        }
+        drawLabel(ctx, `已消费 ${consumed.toFixed(0)} B + 滞留 ${buffered.toFixed(0)} B${dropped ? ` + 丢失 ${dropped.toFixed(0)} B` : ""}`,
+          x, 234, barWidth, colors.foreground, "left", 10);
+        let offset = x;
+        for (const [value, color] of [[consumed, colors.green], [buffered, colors.orange], [dropped, colors.red]]) {
+          if (value <= 0) continue;
+          ctx.fillStyle = color;
+          ctx.fillRect(offset, 245, scale(value), 12);
+          offset += scale(value);
+        }
+        drawLabel(ctx, note || "下方各段长度之和 = 上方生产长度", x, 269,
+          barWidth, colors.mutedText, "left", 9);
+      }
+
+      function drawWave(ctx, body, colors, bad = false) {
+        drawPanel(ctx, body, colors.muted);
+        const count = Math.max(8, Math.floor(body.width / 8));
+        const barWidth = Math.max(2, (body.width - 14) / count - 2);
+        for (let index = 0; index < count; index++) {
+          const height = 9 + ((index * 7) % 27);
+          const x = body.x + 7 + index * (barWidth + 2);
+          const y = body.y + body.height - 10 - height;
+          roundRect(ctx, x, y, barWidth, height, 1.5);
+          ctx.fillStyle = bad && index % 3 === 0 ? colors.red : bad ? colors.redSoft : colors.green;
+          ctx.fill();
+        }
+      }
+
+      function drawQueue(ctx, body, total, held, colors) {
+        drawPanel(ctx, body, colors.muted);
+        const columns = Math.max(4, Math.floor(body.width / 12));
+        for (let index = 0; index < total; index++) {
+          const column = index % columns;
+          const row = Math.floor(index / columns);
+          roundRect(ctx, body.x + 8 + column * 12, body.y + 12 + row * 18, 8, 13, 2);
+          ctx.fillStyle = index < held ? colors.orange : colors.border;
+          ctx.fill();
+        }
+      }
+
+      function drawPartial(ctx, width, height, time, fixed, colors) {
+        const layout = actorLayout(width);
+        const interval = 10 / 9600 * 1000;
+        const sent = clamp(Math.floor(time / interval), 0, encoded.length);
+        const read1 = time >= 14;
+        const read2 = time >= 64;
+        const consumed = (read1 ? 13 : 0) + (read2 ? 5 : 0);
+        const buffered = Math.max(0, sent - consumed);
+        const y = Math.round(height * 0.5);
+        const boxHeight = height - 16;
+        const leftBody = drawActor(ctx, layout.left, "发送方", "TX", colors, "neutral", boxHeight);
+        const centerBody = drawActor(ctx, layout.center, "接收缓冲区", "RX", colors,
+          "neutral", boxHeight);
+        const rightBody = drawActor(ctx, layout.right, fixed ? "读取方 · 分帧" : "读取方",
+          fixed ? "FRAME" : "Read()", colors, fixed ? "good" : read1 ? "bad" : "neutral", boxHeight);
+
+        const leftCount = sent;
+        const centerCount = sent;
+        drawByteGrid(ctx, leftBody.x, leftBody.y + 18, leftBody.width, leftCount, 18, colors);
+        drawByteGrid(ctx, centerBody.x, centerBody.y + 18, centerBody.width,
+          centerCount,
+          18,
+          colors,
+          "blue",
+          -1,
+          encoded,
+          consumed);
+        drawLabel(ctx, `${leftCount}/18 B`, leftBody.x, leftBody.y + leftBody.height - 8, leftBody.width, colors.mutedText);
+        drawLabel(ctx, `${buffered} B 可读`, centerBody.x, centerBody.y + centerBody.height - 8,
+          centerBody.width, colors.mutedText, "right");
+        if (fixed) {
+          if (read2) {
+            drawReadCard(ctx, rightBody.x, rightBody.y + 10, rightBody.width,
+              "完整帧 · 18 B", encoded, "模拟设备数据", colors, "green");
+          } else {
+            drawLabel(ctx, read1 ? "分帧器已存 13 B" : "等待完整帧", rightBody.x,
+              rightBody.y + 26, rightBody.width, colors.green);
+          }
+        } else if (read1) {
+          const firstHeight = drawReadCard(ctx, rightBody.x, rightBody.y + 10, rightBody.width,
+            "Read #1 · 13 B", encoded.slice(0, 13), "模拟设备�", colors, "red");
+          if (read2) drawReadCard(ctx, rightBody.x, rightBody.y + 16 + firstHeight,
+            rightBody.width, "Read #2 · 5 B", encoded.slice(13), "��据", colors, "red");
+        } else {
+          drawLabel(ctx, "等待 Read", rightBody.x, rightBody.y + 26, rightBody.width, colors.mutedText);
+        }
+
+        drawWire(ctx, layout.wire1, y, colors.border,
+          streamTokens(time, 18, interval, fixed ? colors.green : colors.blue));
+        drawWire(ctx, layout.wire2, y, fixed ? colors.green : colors.border,
+          fixed ? [
+            ...readTokens(time, 14, colors.green),
+            ...readTokens(time, 64, colors.green)
+          ] : [
+            ...readTokens(time, 14, colors.red),
+            ...readTokens(time, 64, colors.red)
+          ]);
+        return fixed
+          ? { problem: null, solution: read2 ? "两次 Read 在读取方拼成完整帧" : read1 ? "读取方分帧器保存 13 B" : "接收缓冲区逐字节到达" }
+          : { problem: read1 ? (read2 ? "两次 Read 被误当成两条消息" : "首次 Read 取走 13 B") : "线路连续传输", solution: null };
+      }
+
+      function drawUtf8(ctx, width, height, time, fixed, colors) {
+        const layout = actorLayout(width);
+        // 0..12 ms: preceding bytes; 13, 14, 15 ms: E6, 95, B0.
+        const produced = clamp(Math.floor(time) + 1, 0, 16);
+        const arrived = clamp(Math.floor(time - 0.5) + 1, 0, 16);
+        const read1 = time >= 14;
+        const read2 = time >= 64;
+        const y = Math.round(height * 0.5);
+        const boxHeight = height - 16;
+        const leftBody = drawActor(ctx, layout.left, "发送方", "TX", colors, "neutral", boxHeight);
+        const centerBody = drawActor(ctx, layout.center, "接收缓冲区", "RX", colors,
+          "neutral", boxHeight);
+        const rightBody = drawActor(ctx, layout.right,
+          fixed ? "读取方 · 增量解码" : "读取方", "UTF-8", colors,
+          fixed ? "good" : read1 ? "bad" : "neutral", boxHeight);
+
+        drawUtf8Grid(ctx, leftBody.x, leftBody.y + 18, leftBody.width,
+          produced, 0, -1, colors, "blue");
+        drawUtf8Grid(ctx, centerBody.x, centerBody.y + 18, centerBody.width,
+          arrived, read2 ? 16 : read1 ? 14 : 0,
+          -1, colors, "blue");
+        drawLabel(ctx, `${produced} B 已产生`, leftBody.x, leftBody.y + leftBody.height - 8,
+          leftBody.width, colors.mutedText);
+        drawLabel(ctx, `${Math.max(0, arrived - (read2 ? 16 : read1 ? 14 : 0))} B 可读`,
+          centerBody.x, centerBody.y + centerBody.height - 8,
+          centerBody.width, colors.mutedText, "right");
+        if (read1) {
+          const firstBytes = [...Array(13).fill(null), 0xE6];
+          const firstHeight = drawReadCard(ctx, rightBody.x, rightBody.y + 10,
+            rightBody.width, "Read #1 · 14 B", firstBytes,
+            fixed ? "前导文本 · 暂存 E6" : "前导文本�", colors, fixed ? "green" : "red");
+          if (read2) drawReadCard(ctx, rightBody.x, rightBody.y + 16 + firstHeight,
+            rightBody.width, "Read #2 · 2 B", [0x95, 0xB0],
+            fixed ? "合并 E6 → 数" : "��", colors, fixed ? "green" : "red");
+        } else {
+          drawLabel(ctx, "等待读取", rightBody.x, rightBody.y + 26,
+            rightBody.width, colors.mutedText);
+        }
+
+        drawWire(ctx, layout.wire1, y, colors.border,
+          pacedByteToken(time, 16, 1, 0.5, fixed ? colors.green : colors.blue));
+        drawWire(ctx, layout.wire2, y, fixed ? colors.green : colors.border,
+          fixed ? readTokens(time, 64, colors.green) : [
+            ...readTokens(time, 14, colors.red),
+            ...readTokens(time, 64, colors.red)
+          ]);
+        return fixed
+          ? { problem: null, solution: read2 ? "读取方将 E6 与 95 B0 合成 数" : read1 ? "增量解码器保留 E6" : "前导字节依次进入缓冲区" }
+          : { problem: read2 ? "字符被拆成 E6 | 95 B0" : read1 ? "本次读取以 E6 结尾" : "前导字节依次进入缓冲区", solution: null };
+      }
+
+      function drawCoalesce(ctx, width, height, time, fixed, colors) {
+        const layout = actorLayout(width);
+        const first = [0x41, 0x30, 0x31, 0x0D, 0x0A];
+        const second = [0x41, 0x30, 0x32, 0x0D, 0x0A];
+        const bytes = [...first, ...second];
+        const arrived = clamp(Math.floor(time / 1.04), 0, 5)
+          + clamp(Math.floor((time - 8) / 1.04), 0, 5);
+        const read = time >= 20;
+        const y = Math.round(height * 0.5);
+        const boxHeight = height - 16;
+        const leftBody = drawActor(ctx, layout.left, "发送方", "TX", colors, "neutral", boxHeight);
+        const centerBody = drawActor(ctx, layout.center, "接收缓冲区", "RX", colors,
+          "neutral", boxHeight);
+        const rightBody = drawActor(ctx, layout.right, fixed ? "读取方 · 分帧" : "读取方",
+          fixed ? "2 FRAMES" : "Read()", colors, fixed ? "good" : read ? "bad" : "neutral", boxHeight);
+
+        drawByteGrid(ctx, leftBody.x, leftBody.y + 18, leftBody.width, arrived, 10,
+          colors, "blue", -1, bytes);
+        drawByteGrid(ctx, centerBody.x, centerBody.y + 18, centerBody.width, arrived, 10,
+          colors, "blue", -1, bytes, read ? 10 : 0);
+        drawLabel(ctx, `${read ? 0 : arrived} B 可读`, centerBody.x,
+          centerBody.y + centerBody.height - 8, centerBody.width, colors.mutedText, "right");
+        if (read && fixed) {
+          const firstHeight = drawReadCard(ctx, rightBody.x, rightBody.y + 10,
+            rightBody.width, "帧 #1 · 5 B", first, "A01", colors, "green");
+          drawReadCard(ctx, rightBody.x, rightBody.y + 16 + firstHeight,
+            rightBody.width, "帧 #2 · 5 B", second, "A02", colors, "green");
+        } else if (read) {
+          drawReadCard(ctx, rightBody.x, rightBody.y + 10, rightBody.width,
+            "Read #1 · 10 B", bytes, "A01\\r\\nA02\\r\\n", colors, "red");
+        } else {
+          drawLabel(ctx, "等待 Read", rightBody.x, rightBody.y + 26,
+            rightBody.width, colors.mutedText);
+        }
+
+        drawWire(ctx, layout.wire1, y, colors.border,
+          time < 8 ? streamTokens(time, 5, 1.04, colors.blue) : streamTokens(time - 8, 5, 1.04, colors.blue));
+        drawWire(ctx, layout.wire2, y, fixed ? colors.green : colors.border,
+          fixed ? readTokens(time, 20, colors.green) : readTokens(time, 20, colors.red));
+        return fixed
+          ? { problem: null, solution: read ? "拆成两条消息" : "等待完整帧" }
+          : { problem: read ? "一次 Read 返回两条消息" : "消息连续到达", solution: null };
+      }
+
+      function drawOverflow(ctx, width, height, time, fixed, colors) {
+        const layout = actorLayout(width);
+        const capacity = 82;
+        const highWater = 76;
+        const lowWater = 68;
+        const pauseAt = highWater;
+        const resumeAt = pauseAt + (highWater - lowWater) / 0.5;
+        const paused = fixed && time >= pauseAt && time < resumeAt;
+        const resumed = fixed && time >= resumeAt;
+        const produced = fixed
+          ? time < pauseAt ? time * 1.5
+            : time < resumeAt ? pauseAt * 1.5
+              : pauseAt * 1.5 + (time - resumeAt) * 1.5
+          : time * 1.5;
+        const consumed = time * 0.5;
+        const pending = Math.max(0, produced - consumed);
+        const buffered = Math.min(capacity, pending);
+        const dropped = fixed ? 0 : Math.max(0, pending - capacity);
+        const overflow = !fixed && pending >= capacity;
+        const y = 110;
+        const leftBody = drawActor(ctx, layout.left, "生产方", paused ? "PAUSE" : resumed ? "RESUME" : "FAST",
+          colors, paused ? "good" : "neutral", 178);
+        const centerBody = drawActor(ctx, layout.center, "接收缓冲区",
+          overflow ? "FULL" : paused ? "RTS=0" : "RTS=1", colors,
+          overflow ? "bad" : fixed ? "good" : "neutral", 178);
+        const rightBody = drawActor(ctx, layout.right, "消费方", "SLOW", colors,
+          "neutral", 178);
+
+        drawProgress(ctx, leftBody.x, leftBody.y + 36, leftBody.width, produced / 150, colors, colors.orange);
+        drawLabel(ctx, `发送 ${produced.toFixed(0)} B`, leftBody.x, leftBody.y + 70, leftBody.width, colors.mutedText);
+        drawLabel(ctx, "1.5 B/ms", leftBody.x, leftBody.y + 90, leftBody.width, colors.orange);
+        drawProgress(ctx, centerBody.x, centerBody.y + 36, centerBody.width,
+          buffered / capacity, colors, overflow ? colors.red : colors.orange);
+        drawLabel(ctx, `${buffered.toFixed(0)} / 82 B`, centerBody.x,
+          centerBody.y + 70, centerBody.width, overflow ? colors.red : colors.mutedText, "right");
+        drawLabel(ctx, fixed ? paused ? "76 B：撤销发送许可" : resumed ? "68 B：恢复发送许可" : "RTS=1：允许发送"
+            : overflow ? `溢出 ${dropped.toFixed(0)} B` : "生产 > 消费",
+          centerBody.x, centerBody.y + 90, centerBody.width,
+          fixed ? colors.green : overflow ? colors.red : colors.mutedText, "center");
+        drawProgress(ctx, rightBody.x, rightBody.y + 36, rightBody.width, consumed / 50, colors, colors.green);
+        drawLabel(ctx, `消费 ${consumed.toFixed(0)} B`, rightBody.x, rightBody.y + 70,
+          rightBody.width, colors.mutedText, "right");
+        drawLabel(ctx, "0.5 B/ms", rightBody.x, rightBody.y + 90, rightBody.width,
+          colors.green, "right");
+
+        drawWire(ctx, layout.wire1, y, overflow ? colors.red : colors.border,
+          paused ? [] : continuousTokens(resumed ? time - resumeAt : time,
+            2.4, overflow ? colors.red : colors.blue));
+        drawWire(ctx, layout.wire2, y, colors.border,
+          continuousTokens(time, 4.8, colors.green));
+        if (fixed) {
+          const feedbackY = 167;
+          const startX = layout.center.x + layout.center.width / 2;
+          const endX = layout.left.x + layout.left.width / 2;
+          ctx.beginPath();
+          ctx.moveTo(startX, feedbackY);
+          ctx.lineTo(endX, feedbackY);
+          ctx.moveTo(endX, feedbackY);
+          ctx.lineTo(endX + 7, feedbackY - 4);
+          ctx.moveTo(endX, feedbackY);
+          ctx.lineTo(endX + 7, feedbackY + 4);
+          ctx.strokeStyle = paused ? colors.red : colors.green;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          drawLabel(ctx, paused ? "接收方 RTS=0 → 发送方 CTS=0" : "接收方 RTS=1 → 发送方 CTS=1",
+            endX, feedbackY - 12, startX - endX,
+            paused ? colors.red : colors.green, "center", 9);
+        }
+        drawVolumeBars(ctx, width, produced, consumed, buffered, dropped, colors,
+          fixed ? "RTS/CTS 示意：接收方按水位切换 RTS；本模拟器不会自动这样切换" : "");
+        return fixed
+          ? { problem: null, solution: paused ? "高水位拉低 RTS，使发送方 CTS=0 并停发；消费继续" : resumed ? "低水位拉高 RTS，CTS=1 后恢复发送" : "RTS=1，发送方正常发送" }
+          : { problem: overflow ? `缓存满，${dropped.toFixed(0)} B 丢失` : "生产快于消费，缓存积压", solution: null };
+      }
+
+      function drawMismatch(ctx, width, height, time, fixed, colors) {
+        const layout = actorLayout(width);
+        const error = time >= 25;
+        const y = 110;
+        const leftBody = drawActor(ctx, layout.left, "发送 UART", "9600 8N1", colors);
+        const centerBody = drawActor(ctx, layout.center, "线路电平与接收采样", "1 TX bit", colors,
+          fixed ? "good" : error ? "bad" : "neutral");
+        const rightBody = drawActor(ctx, layout.right, "接收 UART",
+          fixed ? "9600 8N1" : "115200 8N1", colors,
+          fixed ? "good" : error ? "bad" : "neutral");
+
+        drawPanel(ctx, leftBody, colors.muted);
+        drawLabel(ctx, "发送字节 0x55", leftBody.x + 5, leftBody.y + 26,
+          leftBody.width - 10, colors.mutedText);
+        drawLabel(ctx, "104 µs / bit", leftBody.x + 5, leftBody.y + 48,
+          leftBody.width - 10, colors.blue, "left", 10);
+        drawPanel(ctx, centerBody, colors.muted);
+        const axisX = centerBody.x + 8;
+        const axisWidth = centerBody.width - 16;
+        const bitWidth = axisWidth / 10;
+        const bits = [0, 1, 0, 1, 0, 1, 0, 1, 0, 1]; // start, 0x55 LSB first, stop
+        const highY = centerBody.y + 42;
+        const lowY = centerBody.y + 77;
+        const waveY = bit => bit ? highY : lowY;
+        const revealX = axisX + axisWidth * clamp(time / 20, 0, 1);
+        drawLabel(ctx, "TX 方波 · 起始位 + 8 数据位 + 停止位", axisX,
+          centerBody.y + 17, axisWidth, colors.blue, "left", 9);
+        for (let index = 0; index <= bits.length; index++) {
+          const bitX = axisX + index * bitWidth;
+          ctx.beginPath();
+          ctx.moveTo(bitX, centerBody.y + 29);
+          ctx.lineTo(bitX, centerBody.y + 89);
+          ctx.strokeStyle = colors.border;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          if (index < bits.length) drawLabel(ctx,
+            index === 0 ? "S" : index === 9 ? "P" : String(index - 1),
+            bitX, centerBody.y + 102, bitWidth, colors.mutedText, "center", 8);
+        }
+        if (revealX > axisX) {
+          ctx.beginPath();
+          ctx.moveTo(axisX - 7, highY);
+          ctx.lineTo(axisX, highY);
+          ctx.lineTo(axisX, waveY(bits[0]));
+          for (let index = 0; index < bits.length; index++) {
+            const bitEnd = Math.min(axisX + (index + 1) * bitWidth, revealX);
+            if (bitEnd <= axisX + index * bitWidth) break;
+            ctx.lineTo(bitEnd, waveY(bits[index]));
+            if (bitEnd >= axisX + (index + 1) * bitWidth && index < bits.length - 1) {
+              ctx.lineTo(bitEnd, waveY(bits[index + 1]));
+            }
+          }
+          ctx.strokeStyle = colors.blue;
+          ctx.lineWidth = 3;
+          ctx.stroke();
+        }
+        // RX detects the falling start edge, then uses its own bit clock to sample.
+        const receiveRatio = fixed ? 1 : 1 / 12;
+        for (let index = 0; index < 10; index++) {
+          const sampleX = axisX + (index + 0.5) * bitWidth * receiveRatio;
+          if (sampleX > revealX) continue;
+          const transmittedBit = Math.min(9, Math.floor((sampleX - axisX) / bitWidth));
+          const sampleY = waveY(bits[transmittedBit]);
+          const isStart = index === 0;
+          const isStop = index === 9;
+          const sampleColor = isStart ? colors.orange : isStop ? colors.green
+            : fixed ? colors.foreground : colors.red;
+          ctx.beginPath();
+          ctx.arc(sampleX, sampleY, isStart || isStop ? 4.5 : 2.4, 0, Math.PI * 2);
+          ctx.fillStyle = sampleColor;
+          ctx.fill();
+          if (isStop && !fixed) {
+            ctx.beginPath();
+            ctx.arc(sampleX, sampleY, 7, 0, Math.PI * 2);
+            ctx.strokeStyle = colors.red;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          }
+        }
+        drawLabel(ctx, fixed ? "RX 9600：采样落在各位中心" : "RX 115200：采样点全挤在起始位",
+          axisX, centerBody.y + 124, axisWidth,
+          fixed ? colors.green : colors.red, "left", 9);
+        drawLabel(ctx, "● 起始采样", axisX, centerBody.y + 147, axisWidth / 2,
+          colors.orange, "left", 9);
+        drawLabel(ctx, "● 停止采样", axisX + axisWidth / 2, centerBody.y + 147,
+          axisWidth / 2, colors.green, "left", 9);
+        drawPanel(ctx, rightBody, colors.muted);
+        drawLabel(ctx, fixed ? "104 µs / bit" : "8.68 µs / bit",
+          rightBody.x + 5, rightBody.y + 36, rightBody.width - 10,
+          fixed ? colors.green : colors.red, "left", 10);
+        drawLabel(ctx, error ? fixed ? "✓ 收到 0x55" : "✕ 停止位采到低电平" : "等待采样",
+          rightBody.x + 5, rightBody.y + 75, rightBody.width - 10,
+          fixed ? colors.green : colors.red, "left", 10);
+
+        drawWire(ctx, layout.wire1, y, colors.border,
+          continuousTokens(time, 1.04, colors.blue, 20));
+        drawWire(ctx, layout.wire2, y, fixed ? colors.green : colors.red,
+          continuousTokens(time - 1.04, 1.04, fixed ? colors.green : colors.red, 20));
+        drawMessage(ctx, 12, 232, width - 24,
+          fixed ? "方波是发送端线路电平；橙色起始采样、绿色停止采样都落在正确位置"
+            : "方波是发送端线路电平；停止位采样仍落在低电平起始位，形成帧错误",
+          colors, fixed ? "green" : "red");
+        return fixed
+          ? { problem: null, solution: error ? "采样位宽一致，字节正确" : "收发双方都设为 9600 8N1" }
+          : { problem: error ? "接收时钟快 12 倍，位边界错位" : "9600 与 115200 位宽不同", solution: null };
+      }
+
+      function drawCts(ctx, width, height, time, fixed, colors) {
+        const layout = actorLayout(width);
+        const releaseAt = fixed ? 10 : 50;
+        const open = time >= releaseAt;
+        const phaseTime = time - releaseAt;
+        const interval = 10 / 9600 * 1000;
+        const delivered = clamp(Math.floor(phaseTime / interval), 0, 8);
+        const held = 8 - delivered;
+        const y = 110;
+        const leftBody = drawActor(ctx, layout.left, "发送端", "TX", colors);
+        const centerBody = drawActor(ctx, layout.center, "CTS 发送许可", open ? "CTS=1" : "CTS=0",
+          colors, open ? "good" : "bad");
+        const rightBody = drawActor(ctx, layout.right, "接收端", `${delivered} B`, colors,
+          open ? "good" : "bad");
+
+        drawQueue(ctx, leftBody, 8, held, colors);
+        drawLabel(ctx, `写入 8 B · 待发 ${held} B`, leftBody.x,
+          leftBody.y + leftBody.height - 8, leftBody.width, colors.mutedText);
+        drawPanel(ctx, centerBody, colors.muted);
+        roundRect(ctx, centerBody.x + centerBody.width / 2 - 2, centerBody.y + 16, 4, centerBody.height - 30, 2);
+        ctx.fillStyle = open ? colors.green : colors.red;
+        ctx.fill();
+        drawLabel(ctx, open ? "允许发送" : "禁止发送", centerBody.x, centerBody.y + centerBody.height / 2,
+          centerBody.width, open ? colors.green : colors.red, "center", 10);
+        drawApp(ctx, rightBody, open ? `已收到 ${delivered} B` : "0 B · 无数据", colors,
+          open ? "good" : "bad");
+
+        drawWire(ctx, layout.wire1, y, !open ? colors.red : colors.border,
+          open ? streamTokens(phaseTime, 8, interval, colors.green) : []);
+        drawWire(ctx, layout.wire2, y, open ? colors.green : colors.border,
+          open ? streamTokens(phaseTime - interval, 8, interval, colors.green) : []);
+        ctx.beginPath();
+        ctx.moveTo(width - 24, 225);
+        ctx.lineTo(24, 225);
+        ctx.moveTo(24, 225);
+        ctx.lineTo(32, 220);
+        ctx.moveTo(24, 225);
+        ctx.lineTo(32, 230);
+        ctx.strokeStyle = open ? colors.green : colors.red;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        drawLabel(ctx, open ? "接收端 CTS=1 → 发送端获得许可" : "接收端 CTS=0 → 发送端不得发出队列中的 8 B",
+          12, 248, width - 24, open ? colors.green : colors.red, "center", 10);
+        drawLabel(ctx, open ? "线路开始送出字节，待发队列逐渐清空" : "应用写入成功 ≠ 串口线上已经发送；接收端一直是 0 B",
+          12, 268, width - 24, colors.mutedText, "center", 9);
+        return fixed
+          ? { problem: null, solution: open ? "CTS=1，待发字节逐个到达接收端" : "CTS=0，等待接收端允许发送" }
+          : { problem: open ? "CTS 恢复，积压字节开始发送" : "CTS=0，8 B 卡在发送队列，接收端 0 B", solution: null };
+      }
+
+      const scenarios = {
+        partial: {
+          title: "读取不完整",
+          subtitle: "发送方 → 接收缓冲区 → 读取方",
+          duration: 70,
+          events: [{ at: 0, label: "连续发送" }, { at: 14, label: "Read 13 B" }, { at: 18.8, label: "18 B 到齐" }, { at: 64, label: "Read 5 B" }],
+          draw: drawPartial
+        },
+        utf8: {
+          title: "UTF-8 截断",
+          subtitle: "0–12 ms 前导字节，13 ms 产生 E6，13.5 ms 到达缓冲区",
+          duration: 70,
+          events: [{ at: 0, label: "前导字节逐块产生" }, { at: 13, label: "产生 E6" }, { at: 13.5, label: "E6 到达缓存" }, { at: 14, label: "Read 含 E6" }, { at: 15.5, label: "95 B0 到达" }, { at: 64, label: "Read 95 B0" }],
+          draw: drawUtf8
+        },
+        coalesce: {
+          title: "消息粘连",
+          subtitle: "连续消息 → 接收缓冲区 → 读取方",
+          duration: 30,
+          events: [{ at: 0, label: "消息 A01" }, { at: 8, label: "消息 A02" }, { at: 13.2, label: "两帧到齐" }, { at: 20, label: "一次 Read" }],
+          draw: drawCoalesce
+        },
+        overflow: {
+          title: "缓存溢出",
+          subtitle: "生产方 → 缓冲区 → 消费方",
+          duration: 100,
+          events: [{ at: 0, label: "开始生产" }, { at: 35, label: "缓存上升" }, { at: 76, label: "76 B 高水位：RTS=0 → CTS=0，停发" }, { at: 92, label: "68 B 低水位：RTS=1 → CTS=1，恢复" }],
+          draw: drawOverflow
+        },
+        mismatch: {
+          title: "参数不一致",
+          subtitle: "物理 UART 示意；本项目虚拟驱动不模拟位级采样",
+          duration: 60,
+          events: [{ at: 0, label: "TX 9600" }, { at: 12, label: "RX 参数不同" }, { at: 25, label: "采样偏移" }, { at: 60, label: "乱码" }],
+          draw: drawMismatch
+        },
+        cts: {
+          title: "CTS 阻塞",
+          subtitle: "发送队列 → CTS 门 → 接收端",
+          duration: 80,
+          events: [{ at: 0, label: "写入 8 B" }, { at: 10, label: "修复路径 CTS ON" }, { at: 50, label: "故障路径 CTS ON" }, { at: 60, label: "8 B 已发送" }],
+          draw: drawCts
+        }
+      };
+
+      let selectedKey = "partial";
+      let serialMs = 0;
+      let animationSeconds = 0;
+      let slowdown = 800;
+      let playing = !reducedMotion;
+      let lastFrame = performance.now();
+
+      function updateScale() {
+        controls.scales.forEach(button => {
+          button.setAttribute("aria-pressed", String(Number(button.dataset.scale) === slowdown));
+        });
+      }
+
+      function updatePlayButton() {
+        const duration = scenarios[selectedKey].duration;
+        controls.playToggle.textContent = playing ? "暂停" : serialMs >= duration ? "重新播放" : "继续";
+        controls.playToggle.setAttribute("aria-pressed", String(playing));
+      }
+
+      function hideTimelineTooltip() {
+        controls.timelineTooltip.hidden = true;
+      }
+
+      function showTimelineTooltip(button) {
+        const tooltip = controls.timelineTooltip;
+        tooltip.replaceChildren();
+        for (const event of button.timelineEvents) {
+          const row = document.createElement("p");
+          const time = document.createElement("time");
+          time.textContent = formatTime(event.at);
+          row.append(time, document.createTextNode(`  ${event.label}`));
+          tooltip.append(row);
+        }
+        tooltip.hidden = false;
+        const rect = button.getBoundingClientRect();
+        const left = clamp(rect.left + rect.width / 2 - tooltip.offsetWidth / 2,
+          10, window.innerWidth - tooltip.offsetWidth - 10);
+        const above = rect.top - tooltip.offsetHeight - 9;
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${above >= 8 ? above : rect.bottom + 9}px`;
+      }
+
+      function renderTimeline(scenario) {
+        const progress = clamp(serialMs / scenario.duration * 100, 0, 100);
+        controls.timelineFill.style.width = `${progress}%`;
+        controls.timelineProgress.setAttribute("aria-valuenow", String(Math.round(progress)));
+        const width = Math.round(controls.timelineEvents.clientWidth);
+        if (controls.timelineEvents.dataset.scenario !== selectedKey ||
+            controls.timelineEvents.dataset.width !== String(width)) {
+          hideTimelineTooltip();
+          controls.timelineEvents.dataset.scenario = selectedKey;
+          controls.timelineEvents.dataset.width = String(width);
+          controls.timelineEvents.replaceChildren();
+          const markerX = at => 12 + (width - 24) * at / scenario.duration;
+          const groups = [];
+          for (const event of scenario.events) {
+            const last = groups.at(-1);
+            if (last && markerX(event.at) - markerX(last.at(-1).at) < 26) {
+              last.push(event);
+            } else {
+              groups.push([event]);
+            }
+          }
+          groups.forEach(group => {
+            const marker = document.createElement("button");
+            marker.type = "button";
+            marker.className = "timeline-event";
+            marker.timelineEvents = group;
+            marker.dataset.time = String(group[0].at);
+            const at = group.reduce((sum, event) => sum + event.at, 0) / group.length;
+            marker.style.left = `${markerX(at)}px`;
+            marker.setAttribute("aria-label", group.map(event =>
+              `${formatTime(event.at)} ${event.label}`).join("；"));
+            marker.addEventListener("pointerenter", () => showTimelineTooltip(marker));
+            marker.addEventListener("pointerleave", hideTimelineTooltip);
+            marker.addEventListener("focus", () => showTimelineTooltip(marker));
+            marker.addEventListener("blur", hideTimelineTooltip);
+            controls.timelineEvents.append(marker);
+          });
+        }
+        const markers = Array.from(controls.timelineEvents.children);
+        const current = markers.findLastIndex(marker => serialMs >= Number(marker.dataset.time));
+        markers.forEach((item, index) => {
+          item.classList.toggle("active", index === current);
+          item.classList.toggle("past", index < current);
+        });
+      }
+
+      function render() {
+        const scenario = scenarios[selectedKey];
+        const colors = themeColors();
+        const problem = prepareCanvas(canvases.problem);
+        const solution = prepareCanvas(canvases.solution);
+        const problemState = scenario.draw(problem.ctx, problem.width, problem.height, serialMs, false, colors);
+        const solutionState = scenario.draw(solution.ctx, solution.width, solution.height, serialMs, true, colors);
+
+        controls.problemStatus.textContent = problemState.problem || "";
+        controls.solutionStatus.textContent = solutionState.solution || "";
+        controls.serialClock.textContent = formatTime(serialMs);
+        controls.animationClock.textContent = `${animationSeconds.toFixed(1)} s`;
+        controls.timelineStatus.textContent = serialMs >= scenario.duration
+          ? "回放结束"
+          : playing ? "连续流播放中" : "已暂停";
+        canvases.problem.setAttribute("aria-label", `${scenario.title}故障动画：${scenario.subtitle}。${problemState.problem || ""}`);
+        canvases.solution.setAttribute("aria-label", `${scenario.title}修复动画：${scenario.subtitle}。${solutionState.solution || ""}`);
+        renderTimeline(scenario);
+      }
+
+      function selectScenario(key) {
+        selectedKey = key;
+        serialMs = 0;
+        animationSeconds = 0;
+        playing = !reducedMotion;
+        lastFrame = performance.now();
+        controls.tabs.forEach(tab => tab.setAttribute("aria-pressed", String(tab.dataset.scenario === key)));
+        updatePlayButton();
+        render();
+      }
+
+      function frame(now) {
+        const delta = Math.min(now - lastFrame, 250);
+        lastFrame = now;
+        if (playing) {
+          animationSeconds += delta / 1000;
+          serialMs += delta / slowdown;
+          const duration = scenarios[selectedKey].duration;
+          if (serialMs >= duration) {
+            serialMs = duration;
+            playing = false;
+            updatePlayButton();
+          }
+          render();
+        }
+        requestAnimationFrame(frame);
+      }
+
+      controls.tabs.forEach(tab => tab.addEventListener("click", () => selectScenario(tab.dataset.scenario)));
+      controls.scales.forEach(button => button.addEventListener("click", () => {
+        slowdown = Number(button.dataset.scale);
+        lastFrame = performance.now();
+        updateScale();
+        render();
+      }));
+      controls.playToggle.addEventListener("click", () => {
+        if (!playing && serialMs >= scenarios[selectedKey].duration) {
+          serialMs = 0;
+          animationSeconds = 0;
+        }
+        playing = !playing;
+        lastFrame = performance.now();
+        updatePlayButton();
+        render();
+      });
+      controls.replay.addEventListener("click", () => {
+        serialMs = 0;
+        animationSeconds = 0;
+        playing = true;
+        lastFrame = performance.now();
+        updatePlayButton();
+        render();
+      });
+      document.addEventListener("visibilitychange", () => {
+        lastFrame = performance.now();
+      });
+      window.addEventListener("resize", render);
+      window.addEventListener("scroll", hideTimelineTooltip, { passive: true });
+
+      updateScale();
+      updatePlayButton();
+      render();
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>

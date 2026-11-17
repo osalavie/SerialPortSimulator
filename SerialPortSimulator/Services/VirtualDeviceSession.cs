@@ -26,6 +26,7 @@ public sealed class VirtualDeviceSession : IDisposable
     public bool IsOpen => !_cancellation.IsCancellationRequested && !_faulted;
     public uint ProtocolVersion => _client.ProtocolVersion;
     public bool SupportsSerialConfig => _client.SupportsSerialConfig;
+    public bool SupportsLineState => _client.SupportsLineState;
 
     public event Action<string, int>? BusinessDataReceived;
     public event Action<string, int>? ResponseSent;
@@ -43,6 +44,7 @@ public sealed class VirtualDeviceSession : IDisposable
     public void SetSerialConfig(SerialLineConfig config) => _client.SetSerialConfig(config);
     public bool GetCts() => _client.GetCts();
     public void SetCts(bool enabled) => _client.SetCts(enabled);
+    public SimulatorLineState GetLineState() => _client.GetLineState();
 
     private async Task ReceiveLoopAsync(CancellationToken cancellationToken)
     {

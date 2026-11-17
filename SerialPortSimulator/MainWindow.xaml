@@ -171,6 +171,12 @@
                                         <Button x:Name="ApplyCtsButton" Content="应用 CTS" Click="ApplyCtsButton_Click" IsEnabled="False" />
                                     </StackPanel>
                                     <TextBlock
+                                        x:Name="BusinessLineText"
+                                        Text="业务控制线：打开控制通道后读取"
+                                        Opacity="0.7"
+                                        FontSize="12"
+                                        TextWrapping="Wrap" />
+                                    <TextBlock
                                         x:Name="SerialParameterStatusText"
                                         Text="选择设备后可读取并设置模拟串口参数。"
                                         Opacity="0.7"
