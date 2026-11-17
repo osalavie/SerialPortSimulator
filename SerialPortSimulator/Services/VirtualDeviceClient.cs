@@ -50,6 +50,14 @@ public sealed record SerialLineConfig(
     }
 }
 
+public sealed record SimulatorLineState(
+    bool Cts,
+    bool Dsr,
+    bool Dcd,
+    bool Dtr,
+    bool Rts,
+    bool CtsHandshake);
+
 /// <summary>Binary control transport for our UMDF device; never opens a COM name.</summary>
 public sealed class VirtualDeviceClient : IDisposable
 {
@@ -63,7 +71,10 @@ public sealed class VirtualDeviceClient : IDisposable
     private static readonly uint SetSerialConfigCode = CtlCode(0x804, 2);
     private static readonly uint GetModemLinesCode = CtlCode(0x805, 1);
     private static readonly uint SetModemLinesCode = CtlCode(0x806, 2);
+    private static readonly uint GetLineStateCode = CtlCode(0x807, 1);
     private const uint CtsOn = 0x10;
+    private const uint DsrOn = 0x20;
+    private const uint DcdOn = 0x80;
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     private struct NativeSerialConfig
@@ -144,7 +155,7 @@ public sealed class VirtualDeviceClient : IDisposable
             if (Call(VersionCode, Array.Empty<byte>(), version) != 4)
                 throw new InvalidOperationException("虚拟串口驱动协议版本不兼容。");
             ProtocolVersion = BitConverter.ToUInt32(version);
-            if (ProtocolVersion is < 1 or > 3)
+            if (ProtocolVersion is < 1 or > 4)
                 throw new InvalidOperationException($"不支持的虚拟串口驱动协议版本：{ProtocolVersion}。");
         }
         catch { _handle.Dispose(); throw; }
@@ -153,6 +164,7 @@ public sealed class VirtualDeviceClient : IDisposable
     public uint ProtocolVersion { get; }
     public bool SupportsSerialConfig => ProtocolVersion >= 2;
     public bool SupportsModemLines => ProtocolVersion >= 3;
+    public bool SupportsLineState => ProtocolVersion >= 4;
 
     public bool GetCts()
     {
@@ -172,6 +184,26 @@ public sealed class VirtualDeviceClient : IDisposable
         uint lines = BitConverter.ToUInt32(output);
         lines = enabled ? lines | CtsOn : lines & ~CtsOn;
         Call(SetModemLinesCode, BitConverter.GetBytes(lines), Array.Empty<byte>());
+    }
+
+    public SimulatorLineState GetLineState()
+    {
+        RequireLineStateSupport();
+        var output = new byte[16];
+        if (Call(GetLineStateCode, Array.Empty<byte>(), output) != output.Length)
+            throw new InvalidOperationException("读取业务控制线状态失败。");
+
+        uint modem = BitConverter.ToUInt32(output, 0);
+        uint dtr = BitConverter.ToUInt32(output, 4);
+        uint rts = BitConverter.ToUInt32(output, 8);
+        uint handshake = BitConverter.ToUInt32(output, 12);
+        return new SimulatorLineState(
+            (modem & CtsOn) != 0,
+            (modem & DsrOn) != 0,
+            (modem & DcdOn) != 0,
+            dtr != 0,
+            rts != 0,
+            handshake != 0);
     }
 
     public void Inject(byte[] bytes)
@@ -236,6 +268,12 @@ public sealed class VirtualDeviceClient : IDisposable
     {
         if (!SupportsModemLines)
             throw new InvalidOperationException("当前驱动版本不支持 CTS 模拟，请更新驱动。");
+    }
+
+    private void RequireLineStateSupport()
+    {
+        if (!SupportsLineState)
+            throw new InvalidOperationException("当前驱动版本不支持读取 DTR/RTS，请先更新驱动。");
     }
 
     private int Call(uint code, byte[] input, byte[] output)

@@ -1,7 +1,7 @@
 #pragma once
 
-// Version 3 adds optional baud-limited transport using FlowControl bit 0.
-#define SIM_CONTROL_PROTOCOL_VERSION 3
+// Version 4 adds observable DTR/RTS output lines and CTS handshake state.
+#define SIM_CONTROL_PROTOCOL_VERSION 4
 #define IOCTL_SIM_INJECT CTL_CODE(FILE_DEVICE_UNKNOWN, 0x800, METHOD_BUFFERED, FILE_WRITE_ACCESS)
 #define IOCTL_SIM_RECEIVE CTL_CODE(FILE_DEVICE_UNKNOWN, 0x801, METHOD_BUFFERED, FILE_READ_ACCESS)
 #define IOCTL_SIM_VERSION CTL_CODE(FILE_DEVICE_UNKNOWN, 0x802, METHOD_BUFFERED, FILE_READ_ACCESS)
@@ -9,6 +9,7 @@
 #define IOCTL_SIM_SET_SERIAL_CONFIG CTL_CODE(FILE_DEVICE_UNKNOWN, 0x804, METHOD_BUFFERED, FILE_WRITE_ACCESS)
 #define IOCTL_SIM_GET_MODEM_LINES CTL_CODE(FILE_DEVICE_UNKNOWN, 0x805, METHOD_BUFFERED, FILE_READ_ACCESS)
 #define IOCTL_SIM_SET_MODEM_LINES CTL_CODE(FILE_DEVICE_UNKNOWN, 0x806, METHOD_BUFFERED, FILE_WRITE_ACCESS)
+#define IOCTL_SIM_GET_LINE_STATE CTL_CODE(FILE_DEVICE_UNKNOWN, 0x807, METHOD_BUFFERED, FILE_READ_ACCESS)
 
 #pragma pack(push, 1)
 typedef struct _SIM_SERIAL_CONFIG
@@ -19,4 +20,12 @@ typedef struct _SIM_SERIAL_CONFIG
     UCHAR StopBits;     // 0=1, 1=1.5, 2=2
     UCHAR FlowControl;  // bit 0: limit both directions to the configured baud rate
 } SIM_SERIAL_CONFIG, *PSIM_SERIAL_CONFIG;
+
+typedef struct _SIM_LINE_STATE
+{
+    ULONG ModemStatus;   // input lines: CTS/DSR/RLSD
+    ULONG DtrOn;         // business output line: DTR
+    ULONG RtsOn;         // business output line: RTS
+    ULONG CtsHandshake;  // business enabled RTS/CTS hardware flow control
+} SIM_LINE_STATE, *PSIM_LINE_STATE;
 #pragma pack(pop)

@@ -8,6 +8,7 @@
 *.reference.txt
 VirtualSerial/packages/
 tools/nuget.exe
+tools/.certs/
 VirtualSerial/x64/
 dist/
 .publish-*/

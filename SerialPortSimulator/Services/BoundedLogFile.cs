@@ -6,39 +6,14 @@ internal static class BoundedLogFile
 {
     private const long MaxBytes = 1024 * 1024;
 
-    public static void AppendPortable(string fileName, string line)
-    {
-        string localPath = Path.Combine(AppContext.BaseDirectory, "Logs", fileName);
-        try
-        {
-            Append(localPath, line);
-            return;
-        }
-        catch (UnauthorizedAccessException) { }
-        catch (IOException) { }
-
-        Append(Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "SerialPortSimulator", fileName), line);
-    }
+    public static void AppendPortable(string fileName, string line) =>
+        Append(Path.Combine(AppContext.BaseDirectory, "Logs", fileName), line);
 
     public static void ReplacePortable(string fileName, string content)
     {
-        string localPath = Path.Combine(AppContext.BaseDirectory, "Logs", fileName);
-        try
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
-            File.WriteAllText(localPath, content);
-            return;
-        }
-        catch (UnauthorizedAccessException) { }
-        catch (IOException) { }
-
-        string fallbackPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "SerialPortSimulator", fileName);
-        Directory.CreateDirectory(Path.GetDirectoryName(fallbackPath)!);
-        File.WriteAllText(fallbackPath, content);
+        string path = Path.Combine(AppContext.BaseDirectory, "Logs", fileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, content);
     }
 
     public static void Append(string path, string line)

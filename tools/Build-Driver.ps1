@@ -10,6 +10,9 @@ if (!(Test-Path $nugetPath)) {
 }
 & $nugetPath restore (Join-Path $repoRoot 'VirtualSerial\packages.config') -PackagesDirectory (Join-Path $repoRoot 'VirtualSerial\packages') -NonInteractive -Source 'https://api.nuget.org/v3/index.json'
 if ($LASTEXITCODE -ne 0) { throw 'WDK NuGet restore failed.' }
-$signMode = if ($TestSign) { 'TestSign' } else { 'Off' }
-& $msbuildPath (Join-Path $repoRoot 'VirtualSerial\VirtualSerial2um.vcxproj') "/p:Configuration=$Configuration" /p:Platform=x64 /p:PreferredToolArchitecture=x64 "/p:SignMode=$signMode" /v:minimal /nologo
+& $msbuildPath (Join-Path $repoRoot 'VirtualSerial\VirtualSerial2um.vcxproj') "/p:Configuration=$Configuration" /p:Platform=x64 /p:PreferredToolArchitecture=x64 /p:SignMode=Off /v:minimal /nologo
 if ($LASTEXITCODE -ne 0) { throw 'Driver build failed.' }
+
+if ($TestSign) {
+    & (Join-Path $PSScriptRoot 'Sign-Driver.ps1') -Configuration $Configuration
+}

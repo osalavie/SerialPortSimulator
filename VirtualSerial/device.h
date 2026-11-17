@@ -34,6 +34,10 @@ typedef struct _DEVICE_CONTEXT
 
     ULONG           ModemControlRegister;
 
+    BOOLEAN         DtrOn;
+
+    BOOLEAN         RtsOn;
+
     ULONG           FifoControlRegister;
 
     ULONG           LineControlRegister;

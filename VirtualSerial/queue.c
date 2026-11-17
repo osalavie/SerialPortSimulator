@@ -23,6 +23,8 @@ Environment:
 
 #define SIM_CTS_HANDSHAKE 0x08u
 #define SIM_TX_WAITING_FOR_CTS 0x01u
+#define SIM_SERIAL_DTR_CONTROL 0x0001u
+#define SIM_SERIAL_RTS_CONTROL 0x0002u
 typedef struct _SIM_HANDFLOW {
     ULONG ControlHandShake;
     ULONG FlowReplace;
@@ -406,6 +408,18 @@ EvtIoDeviceControl(
         WdfRequestCompleteWithInformation(Request, status, NT_SUCCESS(status) ? sizeof(lines) : 0);
         return;
     }
+    case IOCTL_SIM_GET_LINE_STATE:
+    {
+        SIM_LINE_STATE state;
+        state.ModemStatus = queueContext->ModemStatus;
+        state.DtrOn = deviceContext->DtrOn ? 1 : 0;
+        state.RtsOn = deviceContext->RtsOn ? 1 : 0;
+        state.CtsHandshake =
+            (queueContext->HandflowControl & SIM_CTS_HANDSHAKE) ? 1 : 0;
+        status = RequestCopyFromBuffer(Request, &state, sizeof(state));
+        WdfRequestCompleteWithInformation(Request, status, NT_SUCCESS(status) ? sizeof(state) : 0);
+        return;
+    }
     case IOCTL_SIM_SET_MODEM_LINES:
     {
         ULONG lines = 0;
@@ -554,9 +568,8 @@ EvtIoDeviceControl(
     case IOCTL_SERIAL_SET_MODEM_CONTROL:
     {
         //
-        // This is a driver for a virtual serial port. Since there is no
-        // actual hardware, we just store the modem control register
-        // configuration and don't do anything with it.
+        // Store the modem control register and mirror DTR/RTS so the
+        // simulator can observe the business-side output lines.
         //
         ULONG *modemControlRegister = GetModemControlRegisterPtr(deviceContext);
 
@@ -565,6 +578,12 @@ EvtIoDeviceControl(
         status = RequestCopyToBuffer(Request,
                             modemControlRegister,
                             sizeof(ULONG));
+        if (NT_SUCCESS(status)) {
+            deviceContext->DtrOn =
+                (*modemControlRegister & SIM_SERIAL_DTR_CONTROL) != 0;
+            deviceContext->RtsOn =
+                (*modemControlRegister & SIM_SERIAL_RTS_CONTROL) != 0;
+        }
         break;
     }
 
@@ -763,11 +782,39 @@ EvtIoDeviceControl(
         break;
     }
 
-    case IOCTL_SERIAL_SET_QUEUE_SIZE:
     case IOCTL_SERIAL_SET_DTR:
+    {
+        ULONG *modemControlRegister = GetModemControlRegisterPtr(deviceContext);
+        deviceContext->DtrOn = TRUE;
+        *modemControlRegister |= SIM_SERIAL_DTR_CONTROL;
+        status = STATUS_SUCCESS;
+        break;
+    }
     case IOCTL_SERIAL_CLR_DTR:
+    {
+        ULONG *modemControlRegister = GetModemControlRegisterPtr(deviceContext);
+        deviceContext->DtrOn = FALSE;
+        *modemControlRegister &= ~SIM_SERIAL_DTR_CONTROL;
+        status = STATUS_SUCCESS;
+        break;
+    }
     case IOCTL_SERIAL_SET_RTS:
+    {
+        ULONG *modemControlRegister = GetModemControlRegisterPtr(deviceContext);
+        deviceContext->RtsOn = TRUE;
+        *modemControlRegister |= SIM_SERIAL_RTS_CONTROL;
+        status = STATUS_SUCCESS;
+        break;
+    }
     case IOCTL_SERIAL_CLR_RTS:
+    {
+        ULONG *modemControlRegister = GetModemControlRegisterPtr(deviceContext);
+        deviceContext->RtsOn = FALSE;
+        *modemControlRegister &= ~SIM_SERIAL_RTS_CONTROL;
+        status = STATUS_SUCCESS;
+        break;
+    }
+    case IOCTL_SERIAL_SET_QUEUE_SIZE:
     case IOCTL_SERIAL_SET_XON:
     case IOCTL_SERIAL_SET_XOFF:
     case IOCTL_SERIAL_SET_CHARS:

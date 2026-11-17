@@ -11,8 +11,7 @@ internal static class ProgramEntry
             if (args.Length == 0)
                 throw new DeviceManagerException(ExitCodes.InvalidArguments, "Missing device manager action.");
 
-            string appRoot = GetOption(args, "--app-root") ?? AppContext.BaseDirectory;
-            using var service = new DeviceManagerService(appRoot);
+            using var service = new DeviceManagerService();
             string action = args[0].ToLowerInvariant();
 
             int result = action switch
@@ -65,5 +64,6 @@ internal static class ExitCodes
     public const int HardwareIdMismatch = 16;
     public const int DeviceRemovalFailed = 17;
     public const int DriverCleanupFailed = 18;
+    public const int DriverPackageUnsigned = 19;
     public const int UnexpectedFailure = 99;
 }
