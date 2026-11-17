@@ -14,13 +14,13 @@
 - 按 CRLF 分帧并精确匹配 `请求=响应` 规则，自动回复业务端请求。
 - 显示业务端写入、模拟器注入和自动响应记录，最多保留 200 条。
 - 模拟页显示当前注入目标 COM，收发记录和运行日志会带上端口名。
-- 提供 `BusinessClient\SerialPortSimulator.BusinessTest.exe`，用于模拟业务端打开 COM、读取注入数据、发送请求和查看十六进制内容；收发数据与模拟器使用一致的 `RX/TX [字节数 B] 内容` 格式，最新记录显示在顶部，时间戳可选；完整诊断异常优先写入该程序所在目录的 `Logs\business-test.log`。接收同时使用事件与 50 ms 轮询，兼容接收事件实现不完整的虚拟驱动。
+- 提供 `TestClient\SerialPortSimulator.TestClient.exe`，用于模拟业务端打开 COM、读取注入数据、发送请求和查看十六进制内容；收发数据与模拟器使用一致的 `RX/TX [字节数 B] 内容` 格式，最新记录显示在顶部，时间戳可选；完整诊断异常优先写入该程序所在目录的 `Logs\test-client.log`。接收同时使用事件与 50 ms 轮询，兼容接收事件实现不完整的虚拟驱动。
 
 ## 构建
 
 需要 Windows 10 1809 或更新版本、.NET 10 SDK、Visual Studio C++ 与 WDK 工具集。
 
-仓库根目录的 `SerialPortSimulator.sln` 统一组织 `SerialPortSimulator`、`BusinessClient`、`DeviceManager`、`DriverSmoke` 和 `VirtualSerial` 五个平级项目目录。Visual Studio 使用 `Debug|x64` 配置构建完整解决方案；命令行也可以单独构建各项目。
+仓库根目录的 `SerialPortSimulator.sln` 统一组织 `SerialPortSimulator`、`TestClient`、`DeviceManager`、`DriverSmoke` 和 `VirtualSerial` 五个平级项目目录。Visual Studio 使用 `Debug|x64` 配置构建完整解决方案；命令行也可以单独构建各项目。
 
 ```powershell
 .\tools\Build-Driver.ps1 -Configuration Debug -TestSign
@@ -32,7 +32,7 @@ dotnet build .\SerialPortSimulator\SerialPortSimulator.csproj -c Debug -p:Platfo
 
 设备管理操作使用 `DevicePackage` 下的独立暂存目录；操作结束后会删除本次解压的驱动文件和 `devcon.exe`。新版辅助程序也会清理旧版本遗留在 `DevicePackage` 根目录的同名文件。删除最后一个本产品虚拟设备后，还会卸载匹配本产品硬件 ID 的驱动包，并移除内嵌测试证书。
 
-客户端必须完整解压 ZIP。主程序位于解压目录根部，管理员辅助程序位于 `DeviceManager` 子目录，业务测试端位于 `BusinessClient` 子目录。
+客户端必须完整解压 ZIP。主程序位于解压目录根部，管理员辅助程序位于 `DeviceManager` 子目录，业务测试端位于 `TestClient` 子目录。
 
 生成完整便携包：
 
@@ -40,7 +40,7 @@ dotnet build .\SerialPortSimulator\SerialPortSimulator.csproj -c Debug -p:Platfo
 .\tools\Package-Release.ps1
 ```
 
-示例：`.\tools\Package-Release.ps1 -Version 1.0.0 -SkipDriverBuild`。离线且已还原依赖时可加 `-NoRestore`。输出位于 `dist`；三个程序及其运行依赖均留在各自的发布目录，无需单文件运行时解压。
+示例：`.\tools\Package-Release.ps1 -Version 1.0.0 -SkipDriverBuild`。离线且已还原依赖时可加 `-NoRestore`。输出位于 `dist`；三个程序分别发布为自包含单文件 EXE，驱动包仍嵌入管理员程序。单文件运行时会解压原生依赖。
 
 设备新建/删除由 `SerialPortSimulator.DeviceManager.exe` 在独立管理员进程中完成。应用当前使用测试签名驱动，生产交付前需要换用公司代码签名证书。
 
@@ -65,11 +65,11 @@ dotnet build .\SerialPortSimulator\SerialPortSimulator.csproj -c Debug -p:Platfo
 
 | 位置 | 内容与清理方式 |
 |---|---|
-| 解压应用的目录 | 三个程序、各自运行依赖及文档；可写时，诊断日志保留在程序旁的 `Logs` 子目录。日志各最多约 1 MiB，崩溃日志只保留最近一次异常。卸载设备后可删除整个解压目录。 |
+| 解压应用的目录 | 三个单文件程序及文档；可写时，诊断日志保留在程序旁的 `Logs` 子目录。日志各最多约 1 MiB，崩溃日志只保留最近一次异常。卸载设备后可删除整个解压目录。 |
 | `%LocalAppData%\SerialPortSimulator` | 程序目录不可写时的日志回退位置；关闭程序后可删除本产品目录。 |
 | `%ProgramData%\SerialPortSimulator` | 管理员日志 `device-manager.log` 最多约 1 MiB。驱动操作使用 `DevicePackage` 独立暂存目录，进程结束时清理暂存文件；最后一个设备成功卸载且暂存清理成功后删除管理员日志。若操作失败，保留日志供排查。 |
-| `%TEMP%\.net\SerialPortSimulator` | 旧版单文件包可能留下的 .NET 原生库缓存；新版目录式发布包不再使用。旧版程序退出后可删除该专属子目录，不要删除整个 `%TEMP%\.net`。 |
+| `%TEMP%\.net\SerialPortSimulator` 等本产品子目录 | 单文件 EXE 运行时的 .NET 原生库缓存。程序退出后可删除本产品专属子目录；不要删除整个 `%TEMP%\.net`。删除程序目录不会自动清除这些缓存。 |
 
 Windows 的驱动存储、虚拟设备注册信息以及导入到系统信任存储区的测试证书是安装状态，不属于临时文件。请先在程序里删除全部本产品设备：删除最后一个设备时会尝试清理本产品驱动包和测试证书；仅删除 ZIP 或解压目录不会卸载这些系统组件。
 
-业务端联调时同时运行模拟器和 `SerialPortSimulator.BusinessTest.exe`，在测试程序中选择模拟器显示的同一 COM 端口并点击“打开端口”。
+业务端联调时同时运行模拟器和 `TestClient\SerialPortSimulator.TestClient.exe`，在测试程序中选择模拟器显示的同一 COM 端口并点击“打开端口”。

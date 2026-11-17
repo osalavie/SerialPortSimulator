@@ -1,4 +1,4 @@
-namespace SerialPortSimulator.BusinessTest;
+namespace SerialPortSimulator.TestClient;
 
 internal static class Program
 {

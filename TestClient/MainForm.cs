@@ -2,7 +2,7 @@ using System.IO.Ports;
 using System.Text;
 using SerialPortSimulator.Services;
 
-namespace SerialPortSimulator.BusinessTest;
+namespace SerialPortSimulator.TestClient;
 
 internal sealed class MainForm : Form
 {
@@ -388,7 +388,7 @@ internal sealed class MainForm : Form
             if (_automationLogPath is { } path)
                 BoundedLogFile.Append(path, line);
             else
-                BoundedLogFile.AppendPortable("business-test.log", line);
+                BoundedLogFile.AppendPortable("test-client.log", line);
         }
         catch
         {

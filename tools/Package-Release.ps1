@@ -10,7 +10,7 @@ $distRoot = Join-Path $repoRoot 'dist'
 $packageName = "SerialPortSimulator-$Version-win-x64"
 $appRoot = Join-Path $distRoot $packageName
 $managerRoot = Join-Path $appRoot 'DeviceManager'
-$businessRoot = Join-Path $appRoot 'BusinessClient'
+$testClientRoot = Join-Path $appRoot 'TestClient'
 [string[]]$restoreOption = @()
 if ($NoRestore) { $restoreOption = @('--no-restore') }
 
@@ -34,7 +34,8 @@ dotnet publish (Join-Path $repoRoot 'SerialPortSimulator\SerialPortSimulator.csp
     --self-contained true `
     @restoreOption `
     -p:Platform=x64 `
-    -p:PublishSingleFile=false `
+    -p:PublishSingleFile=true `
+    -p:IncludeNativeLibrariesForSelfExtract=true `
     -p:DebugType=None `
     -p:DebugSymbols=false `
     -o $appRoot
@@ -46,7 +47,8 @@ dotnet publish (Join-Path $repoRoot 'DeviceManager\SerialPortSimulator.DeviceMan
     --self-contained true `
     @restoreOption `
     -p:Platform=x64 `
-    -p:PublishSingleFile=false `
+    -p:PublishSingleFile=true `
+    -p:IncludeNativeLibrariesForSelfExtract=true `
     -p:PublishTrimmed=true `
     -p:TrimMode=link `
     -p:InvariantGlobalization=true `
@@ -55,16 +57,17 @@ dotnet publish (Join-Path $repoRoot 'DeviceManager\SerialPortSimulator.DeviceMan
     -o $managerRoot
 if ($LASTEXITCODE -ne 0) { throw 'Device manager publish failed.' }
 
-dotnet publish (Join-Path $repoRoot 'BusinessClient\SerialPortSimulator.BusinessTest.csproj') `
+dotnet publish (Join-Path $repoRoot 'TestClient\SerialPortSimulator.TestClient.csproj') `
     -c Release `
     -r win-x64 `
     --self-contained true `
     @restoreOption `
-    -p:PublishSingleFile=false `
+    -p:PublishSingleFile=true `
+    -p:IncludeNativeLibrariesForSelfExtract=true `
     -p:DebugType=None `
     -p:DebugSymbols=false `
-    -o $businessRoot
-if ($LASTEXITCODE -ne 0) { throw 'Business test client publish failed.' }
+    -o $testClientRoot
+if ($LASTEXITCODE -ne 0) { throw 'Test client publish failed.' }
 
 Copy-Item -LiteralPath (Join-Path $repoRoot 'README.md') -Destination $appRoot -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot 'docs') -Destination $appRoot -Recurse -Force

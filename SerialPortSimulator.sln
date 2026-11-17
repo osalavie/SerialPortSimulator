@@ -4,7 +4,7 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SerialPortSimulator", "SerialPortSimulator\SerialPortSimulator.csproj", "{0E948D96-8725-4683-8174-56D1C1050252}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BusinessClient", "BusinessClient\SerialPortSimulator.BusinessTest.csproj", "{7B1D2790-337D-4B25-8C22-DFB360EF65FD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestClient", "TestClient\SerialPortSimulator.TestClient.csproj", "{7B1D2790-337D-4B25-8C22-DFB360EF65FD}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DeviceManager", "DeviceManager\SerialPortSimulator.DeviceManager.csproj", "{235D9F88-2BE6-41BF-B453-1B1DF6A8C6F9}"
 	ProjectSection(ProjectDependencies) = postProject
