@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <AssemblyName>SerialPortSimulator.DeviceManager</AssemblyName>
+    <RootNamespace>SerialPortSimulator.DeviceManager</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Platforms>x64</Platforms>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\SerialPortSimulator\Services\BoundedLogFile.cs" Link="Services\BoundedLogFile.cs" />
+    <EmbeddedResource Include="..\VirtualSerial\x64\Debug\VirtualSerial2um\VirtualSerial2um.dll"
+                      LogicalName="SerialPortSimulator.DeviceManager.DriverResources.VirtualSerial2um.dll"
+                      Condition="Exists('..\VirtualSerial\x64\Debug\VirtualSerial2um\VirtualSerial2um.dll')" />
+    <EmbeddedResource Include="..\VirtualSerial\x64\Debug\VirtualSerial2um\virtualserial2um.inf"
+                      LogicalName="SerialPortSimulator.DeviceManager.DriverResources.virtualserial2um.inf"
+                      Condition="Exists('..\VirtualSerial\x64\Debug\VirtualSerial2um\virtualserial2um.inf')" />
+    <EmbeddedResource Include="..\VirtualSerial\x64\Debug\VirtualSerial2um\wudf.cat"
+                      LogicalName="SerialPortSimulator.DeviceManager.DriverResources.wudf.cat"
+                      Condition="Exists('..\VirtualSerial\x64\Debug\VirtualSerial2um\wudf.cat')" />
+    <EmbeddedResource Include="..\VirtualSerial\x64\Debug\VirtualSerial2um.cer"
+                      LogicalName="SerialPortSimulator.DeviceManager.DriverResources.VirtualSerial2um.cer"
+                      Condition="Exists('..\VirtualSerial\x64\Debug\VirtualSerial2um.cer')" />
+    <EmbeddedResource Include="..\VirtualSerial\packages\Microsoft.Windows.WDK.x64.10.0.28000.2526\c\tools\10.0.28000.0\x64\devcon.exe"
+                      LogicalName="SerialPortSimulator.DeviceManager.DriverResources.devcon.exe"
+                      Condition="Exists('..\VirtualSerial\packages\Microsoft.Windows.WDK.x64.10.0.28000.2526\c\tools\10.0.28000.0\x64\devcon.exe')" />
+  </ItemGroup>
+</Project>
