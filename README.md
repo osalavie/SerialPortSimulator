@@ -22,7 +22,7 @@ A Windows desktop application built on Microsoft WinUI 3 for creating and managi
 
 Requirements: Windows 10 1809 or later, .NET 10 SDK, Visual Studio C++ tools, and the Windows Driver Kit (WDK).
 
-`SerialPortSimulator.sln` contains `SerialPortSimulator`, `TestClient`, `DeviceManager`, `DriverSmoke`, and `VirtualSerial`. Use the `Debug|x64` configuration in Visual Studio, or build individual projects from the command line.
+`SerialPortSimulator.slnx` contains `SerialPortSimulator`, `TestClient`, `DeviceManager`, `DriverSmoke`, and `VirtualSerial`. Use the `Debug|x64` configuration in Visual Studio, or build individual projects from the command line.
 
 ```powershell
 .\tools\Build-Driver.ps1 -Configuration Debug -TestSign
@@ -66,6 +66,8 @@ End-to-end tests cover exclusive COM access, parallel control-channel operation,
 After updating the driver to protocol version 4, run `dotnet run --project .\DriverSmoke\DriverSmoke.csproj -- --line-test` to verify line-rate limiting and CTS pause/resume. DTR/RTS and RTS/CTS state can be observed in the simulator parameter card. Software simulation is limited by Windows timer precision and does not produce real RS-232/TTL voltages or hardware TXD/RXD waveforms.
 
 See [docs/serial-port-knowledge.md](docs/serial-port-knowledge.md) for serial-port concepts, data flow, and buffering strategy.
+
+Open [docs/serial-communication-animation.html](docs/serial-communication-animation.html) for an interactive, time-dilated continuous-byte-stream lab that pairs each real-world serial failure with one concrete solution.
 
 Diagnostic logs are always written under `Logs` next to the executable. The portable ZIP must be extracted to a writable directory; if the application directory is read-only, logs are not redirected elsewhere.
 

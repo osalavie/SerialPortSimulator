@@ -22,7 +22,7 @@
 
 需要 Windows 10 1809 或更新版本、.NET 10 SDK、Visual Studio C++ 与 WDK 工具集。
 
-仓库根目录的 `SerialPortSimulator.sln` 统一组织 `SerialPortSimulator`、`TestClient`、`DeviceManager`、`DriverSmoke` 和 `VirtualSerial` 五个平级项目目录。Visual Studio 使用 `Debug|x64` 配置构建完整解决方案；命令行也可以单独构建各项目。
+仓库根目录的 `SerialPortSimulator.slnx` 统一组织 `SerialPortSimulator`、`TestClient`、`DeviceManager`、`DriverSmoke` 和 `VirtualSerial` 五个平级项目目录。Visual Studio 使用 `Debug|x64` 配置构建完整解决方案；命令行也可以单独构建各项目。
 
 ```powershell
 .\tools\Build-Driver.ps1 -Configuration Debug -TestSign
@@ -66,6 +66,8 @@ dotnet build .\SerialPortSimulator\SerialPortSimulator.csproj -c Debug -p:Platfo
 更新到协议版本 4 的驱动后，可用 `dotnet run --project .\DriverSmoke\DriverSmoke.csproj -- --line-test` 验证线路限速和 CTS 暂停/恢复；DTR/RTS 和 RTS/CTS 流控状态可在模拟器参数卡片中观察。软件模拟受 Windows 定时器精度影响，无法产生真实 RS-232/TTL 电压或硬件 TXD/RXD 波形。
 
 串口概念、工作原理、数据流程和缓存策略见 [docs/serial-port-knowledge.md](docs/serial-port-knowledge.md)。
+
+打开 [docs/serial-communication-animation.html](docs/serial-communication-animation.html) 可查看按真实串口时间高倍率放慢的连续字节流交互动画；每个实际问题只对应一个明确解决方案。
 
 运行诊断日志固定写入主程序旁的 `Logs\runtime.log`。便携包必须解压到可写目录；如果程序目录只读，日志不会改写到其他位置。
 
