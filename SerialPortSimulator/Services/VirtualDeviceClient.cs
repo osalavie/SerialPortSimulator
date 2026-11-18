@@ -36,17 +36,17 @@ public sealed record SerialLineConfig(
     public void Validate()
     {
         if (BaudRate is 0 or > int.MaxValue)
-            throw new ArgumentOutOfRangeException(nameof(BaudRate), "波特率必须为 1 到 2,147,483,647。");
+            throw new ArgumentOutOfRangeException(nameof(BaudRate), UiLanguage.Text("波特率必须为 1 到 2,147,483,647。", "Use a baud rate from 1 to 2,147,483,647."));
         if (DataBits is < 5 or > 8)
-            throw new ArgumentOutOfRangeException(nameof(DataBits), "数据位必须为 5 到 8。");
+            throw new ArgumentOutOfRangeException(nameof(DataBits), UiLanguage.Text("数据位必须为 5 到 8。", "Use 5 to 8 data bits."));
         if (!Enum.IsDefined(Parity))
             throw new ArgumentOutOfRangeException(nameof(Parity));
         if (!Enum.IsDefined(StopBits))
             throw new ArgumentOutOfRangeException(nameof(StopBits));
         if (StopBits == SimulatorStopBits.OnePointFive && DataBits != 5)
-            throw new ArgumentOutOfRangeException(nameof(StopBits), "1.5 停止位只适用于 5 数据位。");
+            throw new ArgumentOutOfRangeException(nameof(StopBits), UiLanguage.Text("1.5 停止位只适用于 5 数据位。", "Use 1.5 stop bits with 5 data bits only."));
         if (StopBits == SimulatorStopBits.Two && DataBits == 5)
-            throw new ArgumentOutOfRangeException(nameof(StopBits), "5 数据位不能使用 2 停止位。");
+            throw new ArgumentOutOfRangeException(nameof(StopBits), UiLanguage.Text("5 数据位不能使用 2 停止位。", "5 data bits cannot use 2 stop bits."));
     }
 }
 
@@ -105,13 +105,13 @@ public sealed class VirtualDeviceClient : IDisposable
         var id = InterfaceId;
         for (int attempt = 0; attempt < 3; attempt++) {
             uint result = CM_Get_Device_Interface_List_Size(out uint length, ref id, null, 0);
-            if (result != 0) throw new InvalidOperationException($"枚举控制接口失败：CONFIGRET {result}");
+            if (result != 0) throw new InvalidOperationException(UiLanguage.Text($"枚举控制接口失败：CONFIGRET {result}", $"Could not list control links: CONFIGRET {result}"));
             var buffer = new char[length];
             result = CM_Get_Device_Interface_List(ref id, null, buffer, length, 0);
             if (result == 0) return new string(buffer).Split('\0', StringSplitOptions.RemoveEmptyEntries);
-            if (result != 0x1A) throw new InvalidOperationException($"读取控制接口失败：CONFIGRET {result}");
+            if (result != 0x1A) throw new InvalidOperationException(UiLanguage.Text($"读取控制接口失败：CONFIGRET {result}", $"Could not read control links: CONFIGRET {result}"));
         }
-        throw new InvalidOperationException("设备列表持续变化，请重试。");
+        throw new InvalidOperationException(UiLanguage.Text("设备列表持续变化，请重试。", "The device list keeps changing. Try again."));
     }
 
     private static string GetInstanceId(string interfacePath)
@@ -153,10 +153,10 @@ public sealed class VirtualDeviceClient : IDisposable
         try {
             var version = new byte[4];
             if (Call(VersionCode, Array.Empty<byte>(), version) != 4)
-                throw new InvalidOperationException("虚拟串口驱动协议版本不兼容。");
+                throw new InvalidOperationException(UiLanguage.Text("虚拟串口驱动协议版本不兼容。", "The driver protocol is not compatible."));
             ProtocolVersion = BitConverter.ToUInt32(version);
             if (ProtocolVersion is < 1 or > 4)
-                throw new InvalidOperationException($"不支持的虚拟串口驱动协议版本：{ProtocolVersion}。");
+                throw new InvalidOperationException(UiLanguage.Text($"不支持的虚拟串口驱动协议版本：{ProtocolVersion}。", $"Driver protocol version {ProtocolVersion} is not supported."));
         }
         catch { _handle.Dispose(); throw; }
     }
@@ -171,7 +171,7 @@ public sealed class VirtualDeviceClient : IDisposable
         RequireModemLinesSupport();
         var output = new byte[4];
         if (Call(GetModemLinesCode, Array.Empty<byte>(), output) != 4)
-            throw new InvalidOperationException("读取 CTS 状态失败。");
+            throw new InvalidOperationException(UiLanguage.Text("读取 CTS 状态失败。", "Could not read CTS."));
         return (BitConverter.ToUInt32(output) & CtsOn) != 0;
     }
 
@@ -180,7 +180,7 @@ public sealed class VirtualDeviceClient : IDisposable
         RequireModemLinesSupport();
         var output = new byte[4];
         if (Call(GetModemLinesCode, Array.Empty<byte>(), output) != 4)
-            throw new InvalidOperationException("读取线路状态失败。");
+            throw new InvalidOperationException(UiLanguage.Text("读取线路状态失败。", "Could not read line status."));
         uint lines = BitConverter.ToUInt32(output);
         lines = enabled ? lines | CtsOn : lines & ~CtsOn;
         Call(SetModemLinesCode, BitConverter.GetBytes(lines), Array.Empty<byte>());
@@ -191,7 +191,7 @@ public sealed class VirtualDeviceClient : IDisposable
         RequireLineStateSupport();
         var output = new byte[16];
         if (Call(GetLineStateCode, Array.Empty<byte>(), output) != output.Length)
-            throw new InvalidOperationException("读取业务控制线状态失败。");
+            throw new InvalidOperationException(UiLanguage.Text("读取业务控制线状态失败。", "Could not read client lines."));
 
         uint modem = BitConverter.ToUInt32(output, 0);
         uint dtr = BitConverter.ToUInt32(output, 4);
@@ -228,7 +228,7 @@ public sealed class VirtualDeviceClient : IDisposable
         int size = Marshal.SizeOf<NativeSerialConfig>();
         var output = new byte[size];
         if (Call(GetSerialConfigCode, Array.Empty<byte>(), output) != size)
-            throw new InvalidOperationException("读取虚拟串口参数失败。");
+            throw new InvalidOperationException(UiLanguage.Text("读取虚拟串口参数失败。", "Could not read port settings."));
         NativeSerialConfig config = MemoryMarshal.Read<NativeSerialConfig>(output);
         return new SerialLineConfig(
             config.BaudRate,
@@ -244,7 +244,7 @@ public sealed class VirtualDeviceClient : IDisposable
         config.Validate();
         RequireSerialConfigSupport();
         if (config.LimitToBaudRate && ProtocolVersion < 3)
-            throw new InvalidOperationException("当前驱动版本不支持线路速率限制，请更新驱动。");
+            throw new InvalidOperationException(UiLanguage.Text("当前驱动版本不支持线路速率限制，请更新驱动。", "Update the driver to limit line speed."));
         var native = new NativeSerialConfig
         {
             BaudRate = config.BaudRate,
@@ -261,19 +261,19 @@ public sealed class VirtualDeviceClient : IDisposable
     private void RequireSerialConfigSupport()
     {
         if (!SupportsSerialConfig)
-            throw new InvalidOperationException("当前虚拟串口驱动版本过旧，请更新驱动以配置串口参数。");
+            throw new InvalidOperationException(UiLanguage.Text("当前虚拟串口驱动版本过旧，请更新驱动以配置串口参数。", "Update the driver to change port settings."));
     }
 
     private void RequireModemLinesSupport()
     {
         if (!SupportsModemLines)
-            throw new InvalidOperationException("当前驱动版本不支持 CTS 模拟，请更新驱动。");
+            throw new InvalidOperationException(UiLanguage.Text("当前驱动版本不支持 CTS 模拟，请更新驱动。", "Update the driver to set CTS."));
     }
 
     private void RequireLineStateSupport()
     {
         if (!SupportsLineState)
-            throw new InvalidOperationException("当前驱动版本不支持读取 DTR/RTS，请先更新驱动。");
+            throw new InvalidOperationException(UiLanguage.Text("当前驱动版本不支持读取 DTR/RTS，请先更新驱动。", "Update the driver to read DTR and RTS."));
     }
 
     private int Call(uint code, byte[] input, byte[] output)

@@ -30,9 +30,15 @@ public sealed partial class MainWindow : Window
     private long _rxBytes;
     private long _txBytes;
 
+    private async void LanguageButton_Click(object sender, RoutedEventArgs e)
+    {
+        await UiLanguage.PromptForChangeAsync(((FrameworkElement)sender).XamlRoot);
+    }
+
     public MainWindow()
     {
         InitializeComponent();
+        Title = (string)Application.Current.Resources["ClientTitle"];
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
         _pollTimer = _dispatcherQueue.CreateTimer();
         _pollTimer.Interval = TimeSpan.FromMilliseconds(50);
@@ -119,7 +125,7 @@ public sealed partial class MainWindow : Window
     {
         if (_refreshingPorts) return;
         if (PortCombo.SelectedItem is string displayName)
-            SetStatus($"已选择 {displayName}，设置参数后打开端口。");
+            SetStatus(UiLanguage.Text($"已选择 {displayName}，设置参数后打开端口。", $"Selected {displayName}. Set the options, then open the port."));
     }
 
     private void MainWindow_Activated(
@@ -162,7 +168,7 @@ public sealed partial class MainWindow : Window
         _txBytes = 0;
         LogBox.Text = string.Empty;
         UpdateStats();
-        SetStatus("记录已清空");
+        SetStatus(UiLanguage.Text("记录已清空", "Log cleared"));
     }
 
     private void RefreshPorts(bool preserveSelection = true, bool updateStatus = true)
@@ -182,7 +188,7 @@ public sealed partial class MainWindow : Window
                     DisplayName = $"{portName} · " +
                         (deviceNames.TryGetValue(portName, out string? deviceName)
                             ? deviceName
-                            : "串口设备")
+                            : UiLanguage.Text("串口设备", "Serial port"))
                 })
                 .ToArray();
 
@@ -206,8 +212,8 @@ public sealed partial class MainWindow : Window
 
         if (updateStatus)
             SetStatus(PortCombo.SelectedItem is string displayName
-                ? $"已选择 {displayName}，设置参数后打开端口。"
-                : "未发现串口，请先在模拟器中新建设备。");
+                ? UiLanguage.Text($"已选择 {displayName}，设置参数后打开端口。", $"Selected {displayName}. Set the options, then open the port.")
+                : UiLanguage.Text("未发现串口，请先在模拟器中新建设备。", "No ports found. Add a device in the simulator first."));
     }
 
     private string? GetSelectedPortName() =>
@@ -228,7 +234,7 @@ public sealed partial class MainWindow : Window
         string? portName = GetSelectedPortName();
         if (portName is null)
         {
-            SetStatus("未发现可用串口", true);
+            SetStatus(UiLanguage.Text("未发现可用串口", "No ports available"), true);
             return;
         }
 
@@ -261,7 +267,7 @@ public sealed partial class MainWindow : Window
             _pollTimer.Start();
             UpdateControlStates();
             SetStatus(
-                $"已打开 {portName} · " +
+                UiLanguage.Text($"已打开 {portName} · ", $"Opened {portName} · ") +
                 $"{baudRate} {dataBits}{ParityText(parity)}{StopText(stopBits)}");
         }
         catch (Exception ex)
@@ -274,8 +280,8 @@ public sealed partial class MainWindow : Window
             LogDiagnostic($"OPEN FAILED {hresult}: {ex}");
             SetStatus(
                 IsAccessDenied(ex)
-                    ? "打开失败：需要管理员权限或重启后生效"
-                    : $"打开失败：{ex.Message}",
+                    ? UiLanguage.Text("打开失败：需要管理员权限或重启后生效", "Could not open port. Admin access or a restart may be needed.")
+                    : UiLanguage.Text($"打开失败：{ex.Message}", $"Could not open port: {ex.Message}"),
                 true);
         }
     }
@@ -298,7 +304,7 @@ public sealed partial class MainWindow : Window
             baudText = BaudRateCombo.SelectedItem as string ?? string.Empty;
         if (!int.TryParse(baudText, out baudRate) || baudRate <= 0)
         {
-            error = "请输入有效的波特率。";
+            error = UiLanguage.Text("请输入有效的波特率。", "Enter a valid baud rate.");
             return false;
         }
 
@@ -312,13 +318,13 @@ public sealed partial class MainWindow : Window
         };
         if (dataBits == 0)
         {
-            error = "请选择数据位。";
+            error = UiLanguage.Text("请选择数据位。", "Select the data bits.");
             return false;
         }
 
         if (ParityCombo.SelectedIndex is < 0 or > 4)
         {
-            error = "请选择校验位。";
+            error = UiLanguage.Text("请选择校验位。", "Select parity.");
             return false;
         }
         parity = (Parity)ParityCombo.SelectedIndex;
@@ -332,12 +338,12 @@ public sealed partial class MainWindow : Window
         };
         if ((int)stopBits < 0)
         {
-            error = "请选择停止位。";
+            error = UiLanguage.Text("请选择停止位。", "Select the stop bits.");
             return false;
         }
         if (stopBits == StopBits.OnePointFive && dataBits != 5)
         {
-            error = "1.5 停止位只适用于 5 数据位。";
+            error = UiLanguage.Text("1.5 停止位只适用于 5 数据位。", "Use 1.5 stop bits with 5 data bits only.");
             return false;
         }
         return true;
@@ -347,13 +353,13 @@ public sealed partial class MainWindow : Window
     {
         if (_port is not { IsOpen: true })
         {
-            SetStatus("端口尚未打开", true);
+            SetStatus(UiLanguage.Text("端口尚未打开", "Open the port first"), true);
             return;
         }
 
         if (SendBox.Text.Length == 0 && NewLineCheck.IsChecked != true)
         {
-            SetStatus("请输入要发送的内容", true);
+            SetStatus(UiLanguage.Text("请输入要发送的内容", "Enter a message to send"), true);
             return;
         }
 
@@ -364,14 +370,14 @@ public sealed partial class MainWindow : Window
             byte[] bytes = Encoding.UTF8.GetBytes(text);
             _port.Write(bytes, 0, bytes.Length);
             AppendRecord("TX", bytes);
-            SetStatus("发送成功");
+            SetStatus(UiLanguage.Text("发送成功", "Sent"));
             SendBox.Focus(FocusState.Programmatic);
             SendBox.SelectAll();
         }
         catch (Exception ex)
         {
             LogDiagnostic($"WRITE FAILED: {ex}");
-            SetStatus($"发送失败：{ex.Message}", true);
+            SetStatus(UiLanguage.Text($"发送失败：{ex.Message}", $"Send failed: {ex.Message}"), true);
         }
     }
 
@@ -449,7 +455,7 @@ public sealed partial class MainWindow : Window
         if (!_closing)
         {
             UpdateControlStates();
-            SetStatus("端口已关闭");
+            SetStatus(UiLanguage.Text("端口已关闭", "Port closed"));
         }
     }
 
@@ -457,7 +463,7 @@ public sealed partial class MainWindow : Window
     {
         bool connected = _port is { IsOpen: true };
         PortCombo.IsEnabled = !connected;
-        OpenButton.Content = connected ? "关闭端口" : "打开端口";
+        OpenButton.Content = connected ? UiLanguage.Text("关闭端口", "Close port") : UiLanguage.Text("打开端口", "Open port");
         SendButton.IsEnabled = connected;
         RtsCtsCheck.IsEnabled = !connected;
         DtrCheck.IsEnabled = !connected;
@@ -472,7 +478,7 @@ public sealed partial class MainWindow : Window
 
     private void SetStatus(string message, bool error = false)
     {
-        StatusText.Text = error ? $"错误：{message}" : message;
+        StatusText.Text = error ? UiLanguage.Text($"错误：{message}", $"Error: {message}") : message;
     }
 
     private void PrepareAutomation(string portName, string? logPath)
@@ -485,7 +491,7 @@ public sealed partial class MainWindow : Window
             .FirstOrDefault();
         if (displayName is null)
         {
-            displayName = $"{portName} · 串口设备";
+            displayName = UiLanguage.Text($"{portName} · 串口设备", $"{portName} · Serial port");
             _portDisplayToName[displayName] = portName;
             PortCombo.Items.Add(displayName);
         }
@@ -552,10 +558,10 @@ public sealed partial class MainWindow : Window
             ? friendlyName
             : !string.IsNullOrWhiteSpace(description) && !description.StartsWith('@')
                 ? description
-                : "串口设备";
+                : UiLanguage.Text("串口设备", "Serial port");
         string stripped = StripPortSuffix(name, portName);
         result[portName] = stripped.Equals(portName, StringComparison.OrdinalIgnoreCase)
-            ? "串口设备"
+            ? UiLanguage.Text("串口设备", "Serial port")
             : stripped;
     }
 

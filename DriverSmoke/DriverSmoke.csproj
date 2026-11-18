@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\SerialPortSimulator\Services\UiLanguage.cs" Link="Services\UiLanguage.cs" />
     <Compile Include="..\SerialPortSimulator\Services\VirtualDeviceClient.cs" Link="Services\VirtualDeviceClient.cs" />
     <Compile Include="..\SerialPortSimulator\Services\RequestResponder.cs" Link="Services\RequestResponder.cs" />
     <Compile Include="..\SerialPortSimulator\Services\VirtualDeviceSession.cs" Link="Services\VirtualDeviceSession.cs" />
