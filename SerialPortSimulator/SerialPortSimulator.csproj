@@ -15,10 +15,14 @@
     <Platforms>x64</Platforms>
   </PropertyGroup>
   <ItemGroup>
+    <Content Remove="Assets\AppIcon.ico" />
     <Content Include="Assets\AppIcon.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Remove="Assets\AppIcon.svg" />
     <None Include="Assets\AppIcon.svg" />
   </ItemGroup>
+  <Target Name="CopyAppIconOnPublish" AfterTargets="Publish">
+    <Copy SourceFiles="Assets\AppIcon.ico" DestinationFolder="$(PublishDir)Assets" />
+  </Target>
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="2.6.4" />
     <PackageReference Include="Microsoft.WindowsAppSDK.DWrite" Version="2.6.4" />
