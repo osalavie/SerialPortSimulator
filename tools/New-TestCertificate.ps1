@@ -14,7 +14,7 @@ if (Test-Path -LiteralPath $pfxPath) {
     }
     if (!(Test-Path -LiteralPath $cerPath)) {
         $password = (Get-Content -LiteralPath $passwordPath -Raw).Trim()
-        $certificate = [System.Security.Cryptography.X509Certificates.X509CertificateLoader]::LoadPkcs12FromFile(
+        $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
             $pfxPath, $password)
         [System.IO.File]::WriteAllBytes(
             $cerPath,
@@ -27,11 +27,17 @@ if (Test-Path -LiteralPath $pfxPath) {
 
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 $bytes = New-Object byte[] 24
-[System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+$random = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+try {
+    $random.GetBytes($bytes)
+}
+finally {
+    $random.Dispose()
+}
 $password = [Convert]::ToBase64String($bytes)
 [System.IO.File]::WriteAllText($passwordPath, $password)
 
-$rsa = [System.Security.Cryptography.RSA]::Create(3072)
+$rsa = [System.Security.Cryptography.RSACng]::new(3072)
 try {
     $request = [System.Security.Cryptography.X509Certificates.CertificateRequest]::new(
         'CN=SerialPortSimulator Test Driver',
