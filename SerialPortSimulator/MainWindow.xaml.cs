@@ -35,6 +35,8 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
         Title = UiLanguage.Get("SimulatorTitle");
+        string iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico");
+        if (File.Exists(iconPath)) AppWindow.SetIcon(iconPath);
         TitleBarChrome.Attach(this, TitleBarRoot, TitleBarDragRegion, CaptionInsetColumn);
         AutomationProperties.SetName(LanguageButton, UiLanguage.Get("SwitchLanguage"));
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1040, 900));

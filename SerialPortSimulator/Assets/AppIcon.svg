@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2E7BF6"/>
+      <stop offset="1" stop-color="#0B3FA8"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.22"/>
+      <stop offset="0.45" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#DBE8F8"/>
+    </linearGradient>
+    <filter id="drop" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#04163F" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#tile)"/>
+  <rect x="64" y="64" width="896" height="896" rx="200" fill="url(#sheen)"/>
+
+  <g fill="none" stroke="#8FE0FF" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" opacity="0.9">
+    <path d="M 64 566 H 190 V 506 H 340"/>
+    <path d="M 700 506 H 820 V 566 H 960"/>
+  </g>
+
+  <path d="M 352 336 H 672 Q 732 336 726 396 L 696 636 Q 690 684 646 684 H 378 Q 334 684 328 636 L 298 396 Q 292 336 352 336 Z"
+        fill="url(#metal)" stroke="#FFFFFF" stroke-width="10" stroke-linejoin="round" filter="url(#drop)"/>
+
+  <g fill="#0B3FA8">
+    <circle cx="392" cy="464" r="24"/>
+    <circle cx="456" cy="464" r="24"/>
+    <circle cx="520" cy="464" r="24"/>
+    <circle cx="584" cy="464" r="24"/>
+    <circle cx="648" cy="464" r="24"/>
+    <circle cx="424" cy="556" r="24"/>
+    <circle cx="488" cy="556" r="24"/>
+    <circle cx="552" cy="556" r="24"/>
+    <circle cx="616" cy="556" r="24"/>
+  </g>
+</svg>
