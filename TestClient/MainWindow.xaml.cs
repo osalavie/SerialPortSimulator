@@ -4,6 +4,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Input;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.Win32;
@@ -38,7 +39,9 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        Title = (string)Application.Current.Resources["ClientTitle"];
+        Title = UiLanguage.Get("ClientTitle");
+        TitleBarChrome.Attach(this, TitleBarRoot, TitleBarDragRegion, CaptionInsetColumn);
+        AutomationProperties.SetName(LanguageButton, UiLanguage.Get("SwitchLanguage"));
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
         _pollTimer = _dispatcherQueue.CreateTimer();
         _pollTimer.Interval = TimeSpan.FromMilliseconds(50);
@@ -52,6 +55,26 @@ public sealed partial class MainWindow : Window
         RootGrid.Loaded += RootGrid_Loaded;
         Activated += MainWindow_Activated;
         Closed += MainWindow_Closed;
+        UiLanguage.Changed += UiLanguage_Changed;
+    }
+
+    private void UiLanguage_Changed()
+    {
+        if (_closing) return;
+        if (_dispatcherQueue.HasThreadAccess) RefreshLocalizedUi();
+        else _dispatcherQueue.TryEnqueue(RefreshLocalizedUi);
+    }
+
+    private void RefreshLocalizedUi()
+    {
+        if (_closing) return;
+        UiText.RefreshAll();
+        UiText.RefreshSelection(ParityCombo);
+        Title = UiLanguage.Get("ClientTitle");
+        AutomationProperties.SetName(LanguageButton, UiLanguage.Get("SwitchLanguage"));
+        RefreshPorts(preserveSelection: true, updateStatus: false);
+        UpdateControlStates();
+        SetStatus(UiLanguage.Text("界面已切换为中文，语言设置已保存。", "UI language switched to English. Setting saved."));
     }
 
     private async void RootGrid_Loaded(object sender, RoutedEventArgs e)
@@ -89,6 +112,7 @@ public sealed partial class MainWindow : Window
     private void MainWindow_Closed(object sender, WindowEventArgs args)
     {
         _closing = true;
+        UiLanguage.Changed -= UiLanguage_Changed;
         ClosePort();
         _pollTimer.Stop();
     }

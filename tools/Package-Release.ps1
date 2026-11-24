@@ -55,6 +55,7 @@ dotnet publish (Join-Path $repoRoot 'SerialPortSimulator\SerialPortSimulator.csp
     -p:Platform=x64 `
     -p:PublishSingleFile=true `
     -p:IncludeNativeLibrariesForSelfExtract=true `
+    -p:EnableCompressionInSingleFile=true `
     -p:DebugType=None `
     -p:DebugSymbols=false `
     -o $appRoot
@@ -68,7 +69,8 @@ dotnet publish (Join-Path $repoRoot 'DeviceManager\SerialPortSimulator.DeviceMan
     -p:Platform=x64 `
     -p:PublishSingleFile=true `
     -p:IncludeNativeLibrariesForSelfExtract=true `
-    -p:PublishTrimmed=false `
+    -p:EnableCompressionInSingleFile=true `
+    -p:PublishTrimmed=true `
     -p:InvariantGlobalization=true `
     -p:DebugType=None `
     -p:DebugSymbols=false `
@@ -82,6 +84,7 @@ dotnet publish (Join-Path $repoRoot 'TestClient\SerialPortSimulator.TestClient.c
     @restoreOption `
     -p:PublishSingleFile=true `
     -p:IncludeNativeLibrariesForSelfExtract=true `
+    -p:EnableCompressionInSingleFile=true `
     -p:DebugType=None `
     -p:DebugSymbols=false `
     -o $testClientRoot

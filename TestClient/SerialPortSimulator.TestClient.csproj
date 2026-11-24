@@ -14,12 +14,15 @@
     <Platforms>x64</Platforms>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.6.4" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="2.6.4" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.DWrite" Version="2.6.4" />
     <PackageReference Include="System.IO.Ports" Version="10.0.15" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\SerialPortSimulator\Services\UiLanguage.cs" Link="Services\UiLanguage.cs" />
     <Compile Include="..\SerialPortSimulator\Services\UiLanguage.WinUI.cs" Link="Services\UiLanguage.WinUI.cs" />
+    <Compile Include="..\SerialPortSimulator\Services\UiText.cs" Link="Services\UiText.cs" />
+    <Compile Include="..\SerialPortSimulator\Services\TitleBarChrome.cs" Link="Services\TitleBarChrome.cs" />
     <Compile Include="..\SerialPortSimulator\Services\BoundedLogFile.cs" Link="Services\BoundedLogFile.cs" />
   </ItemGroup>
 </Project>

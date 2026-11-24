@@ -29,7 +29,6 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        UiLanguage.AddResources(Resources);
         _window = new MainWindow();
         _window.Activate();
     }

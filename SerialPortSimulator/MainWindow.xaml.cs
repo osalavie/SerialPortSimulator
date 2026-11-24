@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using SerialPortSimulator.Services;
 
@@ -13,11 +14,15 @@ public sealed partial class MainWindow : Window
     private readonly DataGenerator _generator = new();
     private readonly List<(DateTime Timestamp, string Data)> _dataRecords = new();
     private readonly DispatcherQueueTimer _lineStateTimer;
+    private readonly SelfResourceMonitor _resourceMonitor = new();
+    private readonly DispatcherQueueTimer _resourceTimer;
     private VirtualDeviceSession? _session;
     private CancellationTokenSource? _sendCancellation;
     private Task? _sendLoop;
     private bool _sendingOnce;
     private bool _deviceManagementBusy;
+    private bool _refreshingLanguage;
+    private bool _updatingCts;
     private uint _selectedProtocolVersion;
     private bool _closing;
 
@@ -29,14 +34,48 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        Title = (string)Application.Current.Resources["SimulatorTitle"];
+        Title = UiLanguage.Get("SimulatorTitle");
+        TitleBarChrome.Attach(this, TitleBarRoot, TitleBarDragRegion, CaptionInsetColumn);
+        AutomationProperties.SetName(LanguageButton, UiLanguage.Get("SwitchLanguage"));
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1040, 900));
         _lineStateTimer = DispatcherQueue.GetForCurrentThread().CreateTimer();
         _lineStateTimer.Interval = TimeSpan.FromMilliseconds(300);
         _lineStateTimer.Tick += (_, _) => UpdateBusinessLineState();
         _lineStateTimer.Start();
+        _resourceTimer = DispatcherQueue.GetForCurrentThread().CreateTimer();
+        _resourceTimer.Interval = TimeSpan.FromSeconds(1);
+        _resourceTimer.Tick += (_, _) => UpdateResourceText();
+        _resourceTimer.Start();
         Closed += MainWindow_Closed;
+        UiLanguage.Changed += UiLanguage_Changed;
         RefreshDevices();
+    }
+
+    private void UiLanguage_Changed()
+    {
+        if (_closing) return;
+        if (DispatcherQueue.HasThreadAccess) RefreshLocalizedUi();
+        else DispatcherQueue.TryEnqueue(RefreshLocalizedUi);
+    }
+
+    private void RefreshLocalizedUi()
+    {
+        if (_closing) return;
+        _refreshingLanguage = true;
+        UiText.RefreshAll();
+        UiText.RefreshSelection(ParityCombo);
+        UiText.RefreshSelection(ModeCombo);
+        UiText.RefreshSelection(LineEndingCombo);
+        _refreshingLanguage = false;
+        Title = UiLanguage.Get("SimulatorTitle");
+        AutomationProperties.SetName(LanguageButton, UiLanguage.Get("SwitchLanguage"));
+        UpdateTemplateLabel();
+        UpdateInjectionTargetText();
+        UpdateSelectedDeviceDetails();
+        LoadSelectedSerialConfig();
+        UpdateBusinessLineState();
+        SetStatus(UiLanguage.Text("界面已切换为中文，语言设置已保存。", "UI language switched to English. Setting saved."));
+        UpdateControls();
     }
 
     private void RefreshButton_Click(object sender, RoutedEventArgs e) => RefreshDevices();
@@ -248,7 +287,6 @@ public sealed partial class MainWindow : Window
 
         PortText.Text = item.Device.PortName;
         DeviceIdText.Text = item.Device.InstanceId;
-        ProtocolText.Text = UiLanguage.Text("读取中…", "Reading…");
     }
 
     private void LoadSelectedSerialConfig()
@@ -284,15 +322,21 @@ public sealed partial class MainWindow : Window
             }
 
             _selectedProtocolVersion = version;
-            ProtocolText.Text = UiLanguage.Text($"版本 {version}", $"Version {version}");
             LimitToBaudRateCheck.IsEnabled = version >= 3;
             CtsOnCheck.IsEnabled = version >= 3;
-            ApplyCtsButton.IsEnabled = version >= 3;
             if (version >= 3)
             {
-                CtsOnCheck.IsChecked = _session is { } activeSession
-                    ? activeSession.GetCts()
-                    : GetSelectedCts(selected.Device.InterfacePath);
+                _updatingCts = true;
+                try
+                {
+                    CtsOnCheck.IsChecked = _session is { } activeSession
+                        ? activeSession.GetCts()
+                        : GetSelectedCts(selected.Device.InterfacePath);
+                }
+                finally
+                {
+                    _updatingCts = false;
+                }
             }
             if (config is not null)
             {
@@ -308,7 +352,6 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            ProtocolText.Text = UiLanguage.Text("读取失败", "Read failed");
             SerialParameterStatusText.Text = UiLanguage.Text($"读取串口参数失败：{ex.Message}", $"Could not read port settings: {ex.Message}");
         }
 
@@ -324,7 +367,6 @@ public sealed partial class MainWindow : Window
         ApplySerialParametersButton.IsEnabled = enabled;
         LimitToBaudRateCheck.IsEnabled = enabled && _selectedProtocolVersion >= 3;
         CtsOnCheck.IsEnabled = enabled && _selectedProtocolVersion >= 3;
-        ApplyCtsButton.IsEnabled = enabled && _selectedProtocolVersion >= 3;
     }
 
     private void SetSerialConfigControls(SerialLineConfig config)
@@ -382,8 +424,9 @@ public sealed partial class MainWindow : Window
         return client.GetCts();
     }
 
-    private void ApplyCtsButton_Click(object sender, RoutedEventArgs e)
+    private void CtsOnCheck_Changed(object sender, RoutedEventArgs e)
     {
+        if (_updatingCts) return;
         if (DeviceCombo.SelectedItem is not DeviceComboItem selected) return;
         try
         {
@@ -400,6 +443,9 @@ public sealed partial class MainWindow : Window
         catch (Exception ex)
         {
             SetStatus(UiLanguage.Text($"设置 CTS 失败：{ex.Message}", $"Could not set CTS: {ex.Message}"), true);
+            _updatingCts = true;
+            try { CtsOnCheck.IsChecked = CtsOnCheck.IsChecked != true; }
+            finally { _updatingCts = false; }
         }
     }
 
@@ -449,7 +495,7 @@ public sealed partial class MainWindow : Window
             session.ResponseSent += Session_ResponseSent;
             session.Faulted += Session_Faulted;
             _session = session;
-            InjectionTargetText.Text = UiLanguage.Text($"注入目标：{selected.Device.PortName}", $"Target: {selected.Device.PortName}");
+            UpdateInjectionTargetText();
             AppendLog(UiLanguage.Text($"已打开控制通道 {selected.Device.PortName}", $"Opened control link for {selected.Device.PortName}"));
             SetStatus(UiLanguage.Text($"控制通道已打开：{selected.Device.PortName}", $"Control link open: {selected.Device.PortName}"));
             LoadSelectedSerialConfig();
@@ -492,15 +538,26 @@ public sealed partial class MainWindow : Window
 
     private void ModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (TemplateLabel is null) return;
+        if (TemplateLabel is null || _refreshingLanguage) return;
         bool fixedText = ModeCombo.SelectedIndex == (int)DataMode.Fixed;
-        TemplateLabel.Text = fixedText ? UiLanguage.Text("固定文本", "Fixed text") : UiLanguage.Text("消息模板", "Message format");
-        TemplateHint.Visibility = fixedText ? Visibility.Collapsed : Visibility.Visible;
+        UpdateTemplateLabel();
         if (fixedText && TemplateBox.Text == "{timestamp},{counter},{value}")
             TemplateBox.Text = "模拟设备数据";
         else if (!fixedText && TemplateBox.Text == "模拟设备数据")
             TemplateBox.Text = "{timestamp},{counter},{value}";
     }
+
+    private void UpdateTemplateLabel()
+    {
+        bool fixedText = ModeCombo.SelectedIndex == (int)DataMode.Fixed;
+        TemplateLabel.Text = fixedText ? UiLanguage.Text("固定文本", "Fixed text") : UiLanguage.Text("消息模板", "Message format");
+        TemplateHint.Visibility = fixedText ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void UpdateInjectionTargetText() =>
+        InjectionTargetText.Text = _session is { } session
+            ? UiLanguage.Text($"注入目标：{session.Device.PortName}", $"Target: {session.Device.PortName}")
+            : UiLanguage.Text("注入目标：未连接", "Target: Not connected");
 
     private void StartButton_Click(object sender, RoutedEventArgs e)
     {
@@ -717,6 +774,13 @@ public sealed partial class MainWindow : Window
     private void SetStatus(string message, bool error = false) =>
         StatusText.Text = error ? UiLanguage.Text($"错误：{message}", $"Error: {message}") : message;
 
+    private void UpdateResourceText()
+    {
+        if (_closing) return;
+        _resourceMonitor.Sample();
+        ResourceText.Text = $"CPU {_resourceMonitor.CpuPercent:F1}% · MEM {_resourceMonitor.WorkingSetMB} MB";
+    }
+
     private void UpdateBusinessLineState()
     {
         if (_closing) return;
@@ -751,7 +815,7 @@ public sealed partial class MainWindow : Window
         _session = null;
         if (!_closing)
         {
-            InjectionTargetText.Text = UiLanguage.Text("注入目标：未连接", "Target: Not connected");
+            UpdateInjectionTargetText();
             BusinessLineText.Text = UiLanguage.Text("业务控制线：打开控制通道后读取", "Open the control link to read client lines.");
         }
         if (session is null) return;
@@ -764,7 +828,9 @@ public sealed partial class MainWindow : Window
     private void MainWindow_Closed(object sender, WindowEventArgs args)
     {
         _closing = true;
+        UiLanguage.Changed -= UiLanguage_Changed;
         _lineStateTimer.Stop();
+        _resourceTimer.Stop();
         _sendCancellation?.Cancel();
         CloseSession();
     }

@@ -61,6 +61,7 @@
 - `tools/Test-VirtualDevice.ps1` 连续运行两次均通过。
 - 模拟器设置为 `19200 7E2`、业务端以 `9600 8N1` 打开后，标准串口查询仍返回 `19200 7E2`，数据收发和自动响应正常。
 - 便携包使用自包含单文件发布；运行时会在 `%TEMP%\.net` 解压原生依赖，关闭程序后可清理本产品专属缓存目录。
+- 发布包只引用 Windows App SDK 的 WinUI 和 DWrite 组件，排除未使用的 AI、ML、Search、Widgets 运行时；主程序和业务测试端启用单文件压缩，管理员辅助程序使用裁剪发布，以减小便携包体积。
 - 管理员辅助程序成功从嵌入资源解压驱动到 `C:\ProgramData\SerialPortSimulator\DevicePackage` 并完成驱动更新。
 - 发布目录将主程序、管理员辅助程序和业务测试端分别放在根目录、`DeviceManager` 和 `TestClient`；主程序从真实 EXE 所在目录定位辅助程序，不依赖启动时的工作目录。
 

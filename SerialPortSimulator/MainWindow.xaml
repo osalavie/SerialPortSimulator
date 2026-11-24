@@ -2,38 +2,59 @@
     x:Class="SerialPortSimulator.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:controls="using:SerialPortSimulator.Controls">
+    xmlns:controls="using:SerialPortSimulator.Controls"
+    xmlns:ui="using:SerialPortSimulator.Services">
     <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0" Margin="24,18,24,10" ColumnSpacing="12">
+        <Grid x:Name="TitleBarRoot" Grid.Row="0" Height="48">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition x:Name="CaptionInsetColumn" Width="0" />
             </Grid.ColumnDefinitions>
-            <StackPanel Spacing="3">
-                <TextBlock Text="{StaticResource SimulatorTitle}" FontSize="27" FontWeight="SemiBold" />
+            <Grid x:Name="TitleBarDragRegion" Grid.Column="0" Background="Transparent">
                 <TextBlock
-                    Text="{StaticResource SimulatorIntro}"
-                    TextWrapping="Wrap"
-                    Opacity="0.7" />
-            </StackPanel>
-            <Button Grid.Column="1"
-                    VerticalAlignment="Top"
-                    Content="{StaticResource SwitchLanguage}"
-                    Click="LanguageButton_Click" />
+                    ui:UiText.Key="SimulatorTitle"
+                    Margin="16,0,0,0"
+                    VerticalAlignment="Center"
+                    FontSize="12" />
+            </Grid>
+            <Button
+                x:Name="LanguageButton"
+                Grid.Column="1"
+                Width="40"
+                Height="32"
+                Margin="0,0,4,0"
+                Padding="0"
+                VerticalAlignment="Center"
+                Background="Transparent"
+                BorderThickness="0"
+                Click="LanguageButton_Click"
+                ToolTipService.Placement="Bottom"
+                ui:UiText.Tip="SwitchLanguage">
+                <FontIcon Glyph="&#xE774;" FontSize="14" />
+            </Button>
         </Grid>
 
-        <TabView
+        <TextBlock
             Grid.Row="1"
+            ui:UiText.Key="SimulatorIntro"
+            Margin="24,10,24,6"
+            TextWrapping="Wrap"
+            Opacity="0.7" />
+
+        <TabView
+            Grid.Row="2"
             Margin="18,0,18,10"
             IsAddTabButtonVisible="False"
             TabWidthMode="Equal">
-            <TabViewItem Header="{StaticResource VirtualDevice}" IsClosable="False">
+            <TabViewItem ui:UiText.Key="VirtualDevice" IsClosable="False">
                 <ScrollViewer
                     VerticalScrollBarVisibility="Auto"
                     HorizontalScrollBarVisibility="Disabled"
@@ -52,7 +73,7 @@
                             CornerRadius="8"
                             Padding="18">
                             <StackPanel Spacing="14">
-                                <TextBlock Text="{StaticResource Connection}" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock ui:UiText.Key="Connection" FontSize="18" FontWeight="SemiBold" />
                                 <Grid ColumnSpacing="10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -63,44 +84,39 @@
                                         x:Name="DeviceCombo"
                                         Grid.Column="0"
                                         HorizontalAlignment="Stretch"
-                                        PlaceholderText="{StaticResource SelectVirtualPort}"
+                                        ui:UiText.Key="SelectVirtualPort"
                                         SelectionChanged="DeviceCombo_SelectionChanged" />
                                     <Button
                                         x:Name="RefreshButton"
                                         Grid.Column="1"
-                                        Content="{StaticResource Refresh}"
+                                        ui:UiText.Key="Refresh"
                                         Click="RefreshButton_Click" />
                                     <Button
                                         x:Name="ConnectButton"
                                         Grid.Column="2"
-                                        Content="{StaticResource OpenControlLink}"
+                                        ui:UiText.Key="OpenControlLink"
                                         Click="ConnectButton_Click" />
                                 </Grid>
                                 <Grid ColumnSpacing="16">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Spacing="3">
-                                        <TextBlock Text="{StaticResource ClientPort}" Opacity="0.7" FontSize="12" />
-                                        <TextBlock x:Name="PortText" Text="{StaticResource NoneSelected}" FontFamily="Consolas" />
+                                        <TextBlock ui:UiText.Key="ClientPort" Opacity="0.7" FontSize="12" />
+                                        <TextBlock x:Name="PortText" ui:UiText.Key="NoneSelected" FontFamily="Consolas" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Spacing="3">
-                                        <TextBlock Text="{StaticResource DeviceId}" Opacity="0.7" FontSize="12" />
+                                        <TextBlock ui:UiText.Key="DeviceId" Opacity="0.7" FontSize="12" />
                                         <TextBlock
                                             x:Name="DeviceIdText"
-                                            Text="{StaticResource NoneSelected}"
+                                            ui:UiText.Key="NoneSelected"
                                             FontFamily="Consolas"
                                             TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
-                                    <StackPanel Grid.Column="2" Spacing="3">
-                                        <TextBlock Text="{StaticResource Protocol}" Opacity="0.7" FontSize="12" />
-                                        <TextBlock x:Name="ProtocolText" Text="{StaticResource NotRead}" FontFamily="Consolas" />
-                                    </StackPanel>
                                 </Grid>
                                 <TextBlock
-                                    Text="{StaticResource ControlLinkHelp}"
+                                    ui:UiText.Key="ControlLinkHelp"
                                     Opacity="0.7"
                                     FontSize="12"
                                     TextWrapping="Wrap" />
@@ -109,18 +125,18 @@
 
                         <Border BorderBrush="#66808080" BorderThickness="1" CornerRadius="8" Padding="18">
                             <StackPanel Spacing="12">
-                                <TextBlock Text="{StaticResource PortSettings}" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock ui:UiText.Key="PortSettings" FontSize="18" FontWeight="SemiBold" />
                                 <StackPanel x:Name="SerialParameterPanel" Spacing="10">
                                     <Grid ColumnSpacing="10">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="1.4*" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="0.8*" />
+                                            <ColumnDefinition Width="1.2*" />
+                                            <ColumnDefinition Width="0.8*" />
                                             <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Spacing="5">
-                                            <TextBlock Text="{StaticResource BaudRate}" />
+                                            <TextBlock ui:UiText.Key="BaudRate" />
                                             <ComboBox
                                                 x:Name="BaudRateCombo"
                                                 IsEditable="True"
@@ -140,7 +156,7 @@
                                             </ComboBox>
                                         </StackPanel>
                                         <StackPanel Grid.Column="1" Spacing="5">
-                                            <TextBlock Text="{StaticResource DataBits}" />
+                                            <TextBlock ui:UiText.Key="DataBits" />
                                             <ComboBox x:Name="DataBitsCombo" HorizontalAlignment="Stretch" SelectedIndex="3">
                                                 <x:String>5</x:String>
                                                 <x:String>6</x:String>
@@ -149,17 +165,17 @@
                                             </ComboBox>
                                         </StackPanel>
                                         <StackPanel Grid.Column="2" Spacing="5">
-                                            <TextBlock Text="{StaticResource Parity}" />
+                                            <TextBlock ui:UiText.Key="Parity" />
                                             <ComboBox x:Name="ParityCombo" HorizontalAlignment="Stretch" SelectedIndex="0">
-                                                <ComboBoxItem Content="{StaticResource None}" />
-                                                <ComboBoxItem Content="{StaticResource Odd}" />
-                                                <ComboBoxItem Content="{StaticResource Even}" />
+                                                <ComboBoxItem ui:UiText.Key="None" />
+                                                <ComboBoxItem ui:UiText.Key="Odd" />
+                                                <ComboBoxItem ui:UiText.Key="Even" />
                                                 <ComboBoxItem Content="Mark" />
                                                 <ComboBoxItem Content="Space" />
                                             </ComboBox>
                                         </StackPanel>
                                         <StackPanel Grid.Column="3" Spacing="5">
-                                            <TextBlock Text="{StaticResource StopBits}" />
+                                            <TextBlock ui:UiText.Key="StopBits" />
                                             <ComboBox x:Name="StopBitsCombo" HorizontalAlignment="Stretch" SelectedIndex="0">
                                                 <x:String>1</x:String>
                                                 <x:String>1.5</x:String>
@@ -169,26 +185,28 @@
                                         <Button
                                             x:Name="ApplySerialParametersButton"
                                             Grid.Column="4"
-                                            Content="{StaticResource ApplySettings}"
+                                            ui:UiText.Key="ApplySettings"
                                             Click="ApplySerialParametersButton_Click"
                                             VerticalAlignment="Bottom" />
                                     </Grid>
                                     <CheckBox x:Name="LimitToBaudRateCheck"
-                                              Content="{StaticResource LimitBaudRate}"
+                                              ui:UiText.Key="LimitBaudRate"
                                               IsEnabled="False" />
-                                    <StackPanel Orientation="Horizontal" Spacing="10">
-                                        <CheckBox x:Name="CtsOnCheck" Content="{StaticResource AllowCts}" IsEnabled="False" />
-                                        <Button x:Name="ApplyCtsButton" Content="{StaticResource ApplyCts}" Click="ApplyCtsButton_Click" IsEnabled="False" />
-                                    </StackPanel>
+                                    <CheckBox
+                                        x:Name="CtsOnCheck"
+                                        ui:UiText.Key="AllowCts"
+                                        IsEnabled="False"
+                                        Checked="CtsOnCheck_Changed"
+                                        Unchecked="CtsOnCheck_Changed" />
                                     <TextBlock
                                         x:Name="BusinessLineText"
-                                        Text="{StaticResource ClientLinesHelp}"
+                                        ui:UiText.Key="ClientLinesHelp"
                                         Opacity="0.7"
                                         FontSize="12"
                                         TextWrapping="Wrap" />
                                     <TextBlock
                                         x:Name="SerialParameterStatusText"
-                                        Text="{StaticResource SelectDeviceHelp}"
+                                        ui:UiText.Key="SelectDeviceHelp"
                                         Opacity="0.7"
                                         FontSize="12"
                                         TextWrapping="Wrap" />
@@ -198,24 +216,24 @@
 
                         <Border BorderBrush="#66808080" BorderThickness="1" CornerRadius="8" Padding="18">
                             <StackPanel Spacing="10">
-                                <TextBlock Text="{StaticResource ManageDevices}" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock ui:UiText.Key="ManageDevices" FontSize="18" FontWeight="SemiBold" />
                                 <TextBlock
-                                    Text="{StaticResource AdminHelp}"
+                                    ui:UiText.Key="AdminHelp"
                                     Opacity="0.7"
                                     FontSize="12"
                                     TextWrapping="Wrap" />
                                 <StackPanel Orientation="Horizontal" Spacing="10">
                                     <Button
                                         x:Name="CreateDeviceButton"
-                                        Content="{StaticResource AddDevice}"
+                                        ui:UiText.Key="AddDevice"
                                         Click="CreateDeviceButton_Click" />
                                     <Button
                                         x:Name="UpdateDriverButton"
-                                        Content="{StaticResource UpdateDriver}"
+                                        ui:UiText.Key="UpdateDriver"
                                         Click="UpdateDriverButton_Click" />
                                     <Button
                                         x:Name="RemoveDeviceButton"
-                                        Content="{StaticResource RemoveDevice}"
+                                        ui:UiText.Key="RemoveDevice"
                                         Click="RemoveDeviceButton_Click" />
                                 </StackPanel>
                             </StackPanel>
@@ -224,7 +242,7 @@
                 </ScrollViewer>
             </TabViewItem>
 
-            <TabViewItem Header="{StaticResource SendReceive}" IsClosable="False">
+            <TabViewItem ui:UiText.Key="SendReceive" IsClosable="False">
                 <ScrollViewer
                     VerticalScrollBarVisibility="Auto"
                     HorizontalScrollBarVisibility="Disabled"
@@ -239,10 +257,10 @@
                         <Border BorderBrush="#66808080" BorderThickness="1" CornerRadius="8" Padding="18">
                             <StackPanel Spacing="14">
                                 <Grid>
-                                    <TextBlock Text="{StaticResource SimulatedData}" FontSize="18" FontWeight="SemiBold" />
+                                    <TextBlock ui:UiText.Key="SimulatedData" FontSize="18" FontWeight="SemiBold" />
                                     <TextBlock
                                         x:Name="InjectionTargetText"
-                                        Text="{StaticResource NoTarget}"
+                                        ui:UiText.Key="NoTarget"
                                         HorizontalAlignment="Right"
                                         Opacity="0.7"
                                         FontFamily="Consolas" />
@@ -253,56 +271,56 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Spacing="5">
-                                        <TextBlock Text="{StaticResource DataType}" />
+                                        <TextBlock ui:UiText.Key="DataType" />
                                         <ComboBox x:Name="ModeCombo" HorizontalAlignment="Stretch" SelectedIndex="0" SelectionChanged="ModeCombo_SelectionChanged">
-                                            <ComboBoxItem Content="{StaticResource Counter}" />
-                                            <ComboBoxItem Content="{StaticResource SineWave}" />
-                                            <ComboBoxItem Content="{StaticResource Random}" />
-                                            <ComboBoxItem Content="{StaticResource FixedText}" />
+                                            <ComboBoxItem ui:UiText.Key="Counter" />
+                                            <ComboBoxItem ui:UiText.Key="SineWave" />
+                                            <ComboBoxItem ui:UiText.Key="Random" />
+                                            <ComboBoxItem ui:UiText.Key="FixedText" />
                                         </ComboBox>
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Spacing="5">
-                                        <TextBlock Text="{StaticResource Interval}" />
+                                        <TextBlock ui:UiText.Key="Interval" />
                                         <TextBox x:Name="IntervalBox" Text="1000" InputScope="Number" />
                                     </StackPanel>
                                 </Grid>
                                 <StackPanel Spacing="5">
-                                    <TextBlock x:Name="TemplateLabel" Text="{StaticResource MessageFormat}" />
+                                    <TextBlock x:Name="TemplateLabel" ui:UiText.Key="MessageFormat" />
                                     <TextBox
                                         x:Name="TemplateBox"
                                         Text="{}{timestamp},{counter},{value}"
-                                        PlaceholderText="{StaticResource EnterMessageFormat}"
+                                        ui:UiText.Key="EnterMessageFormat"
                                         AcceptsReturn="True"
                                         Height="72"
                                         TextWrapping="Wrap" />
                                     <TextBlock
                                         x:Name="TemplateHint"
-                                        Text="{StaticResource TemplateHelp}"
+                                        ui:UiText.Key="TemplateHelp"
                                         TextWrapping="Wrap"
                                         Opacity="0.7"
                                         FontSize="12" />
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <TextBlock Text="{StaticResource LineEnding}" VerticalAlignment="Center" />
+                                    <TextBlock ui:UiText.Key="LineEnding" VerticalAlignment="Center" />
                                     <ComboBox x:Name="LineEndingCombo" Width="145" SelectedIndex="1">
-                                        <ComboBoxItem Content="{StaticResource None}" />
+                                        <ComboBoxItem ui:UiText.Key="None" />
                                         <ComboBoxItem Content="CRLF (\r\n)" />
                                         <ComboBoxItem Content="LF (\n)" />
                                         <ComboBoxItem Content="CR (\r)" />
                                     </ComboBox>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <Button x:Name="StartButton" Content="{StaticResource StartSending}" Click="StartButton_Click" IsEnabled="False" />
-                                    <Button x:Name="StopButton" Content="{StaticResource Stop}" Click="StopButton_Click" IsEnabled="False" />
-                                    <Button x:Name="SendOnceButton" Content="{StaticResource SendOnce}" Click="SendOnceButton_Click" IsEnabled="False" />
-                                    <Button x:Name="ResetButton" Content="{StaticResource ResetCount}" Click="ResetButton_Click" />
+                                    <Button x:Name="StartButton" ui:UiText.Key="StartSending" Click="StartButton_Click" IsEnabled="False" />
+                                    <Button x:Name="StopButton" ui:UiText.Key="Stop" Click="StopButton_Click" IsEnabled="False" />
+                                    <Button x:Name="SendOnceButton" ui:UiText.Key="SendOnce" Click="SendOnceButton_Click" IsEnabled="False" />
+                                    <Button x:Name="ResetButton" ui:UiText.Key="ResetCount" Click="ResetButton_Click" />
                                 </StackPanel>
                             </StackPanel>
                         </Border>
 
                         <Border BorderBrush="#66808080" BorderThickness="1" CornerRadius="8" Padding="18">
                             <StackPanel Spacing="10">
-                                <TextBlock Text="{StaticResource ReplyRules}" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock ui:UiText.Key="ReplyRules" FontSize="18" FontWeight="SemiBold" />
                                 <TextBox
                                     x:Name="RuleBox"
                                     Text="PING=PONG"
@@ -310,9 +328,9 @@
                                     TextWrapping="NoWrap"
                                     Height="92"
                                     FontFamily="Consolas"
-                                    PlaceholderText="{StaticResource ReplyRuleHint}" />
+                                    ui:UiText.Key="ReplyRuleHint" />
                                 <TextBlock
-                                    Text="{StaticResource ReplyRuleHelp}"
+                                    ui:UiText.Key="ReplyRuleHelp"
                                     Opacity="0.7"
                                     FontSize="12"
                                     TextWrapping="Wrap" />
@@ -327,14 +345,14 @@
                             Padding="18">
                             <StackPanel Spacing="10">
                                 <Grid>
-                                    <TextBlock Text="{StaticResource Traffic}" FontSize="18" FontWeight="SemiBold" />
+                                    <TextBlock ui:UiText.Key="Traffic" FontSize="18" FontWeight="SemiBold" />
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
                                         <CheckBox x:Name="ShowLogTimestampCheck"
-                                                  Content="{StaticResource ShowTime}"
+                                                  ui:UiText.Key="ShowTime"
                                                   IsChecked="True"
                                                   Checked="ShowLogTimestampCheck_Changed"
                                                   Unchecked="ShowLogTimestampCheck_Changed" />
-                                        <Button Content="{StaticResource ClearLog}" Click="ClearButton_Click" />
+                                        <Button ui:UiText.Key="ClearLog" Click="ClearButton_Click" />
                                     </StackPanel>
                                 </Grid>
                                 <TextBox
@@ -354,13 +372,25 @@
         </TabView>
 
         <Border
-            Grid.Row="2"
+            Grid.Row="3"
             Margin="24,0,24,16"
             Padding="12,8"
             BorderBrush="#66808080"
             BorderThickness="1"
             CornerRadius="6">
-            <TextBlock x:Name="StatusText" Text="{StaticResource Disconnected}" Opacity="0.8" TextWrapping="Wrap" />
+            <Grid ColumnSpacing="16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="StatusText" ui:UiText.Key="Disconnected" Opacity="0.8" TextWrapping="Wrap" />
+                <TextBlock
+                    x:Name="ResourceText"
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    FontFamily="Consolas"
+                    Opacity="0.6" />
+            </Grid>
         </Border>
     </Grid>
 </Window>

@@ -13,3 +13,4 @@ VirtualSerial/x64/
 dist/
 .publish-*/
 .artifacts/
+packages/

@@ -13,5 +13,5 @@
   <Project Path="TestClient/SerialPortSimulator.TestClient.csproj">
     <Platform Project="x64" />
   </Project>
-  <Project Path="VirtualSerial/VirtualSerial2um.vcxproj" />
+  <Project Path="VirtualSerial/VirtualSerial2um.vcxproj" Id="65a037cb-9245-442a-a791-5cfc34e97bf7" />
 </Solution>
