@@ -23,7 +23,7 @@ public sealed partial class MainWindow : Window
         if (File.Exists(iconPath)) AppWindow.SetIcon(iconPath);
         TitleBarChrome.Attach(this, TitleBarRoot, TitleBarDragRegion, CaptionInsetColumn);
         AutomationProperties.SetName(LanguageButton, UiLanguage.Get("SwitchLanguage"));
-        AppWindow.Resize(new Windows.Graphics.SizeInt32(1040, 900));
+        AppWindow.Resize(new Windows.Graphics.SizeInt32(1040, 880));
         _resourceTimer = DispatcherQueue.GetForCurrentThread().CreateTimer();
         _resourceTimer.Interval = TimeSpan.FromSeconds(1);
         _resourceTimer.Tick += (_, _) => UpdateResourceText();
@@ -371,7 +371,7 @@ public sealed partial class MainWindow : Window
     {
         if (_closing) return;
         _resourceMonitor.Sample();
-        ResourceText.Text = $"CPU {_resourceMonitor.CpuPercent:F1}% · MEM {_resourceMonitor.WorkingSetMB} MB";
+        ResourceText.Text = $"CPU {_resourceMonitor.CpuPercent:F1}% · MEM {_resourceMonitor.MemoryMB} MB";
     }
 
     private void MainWindow_Closed(object sender, WindowEventArgs args)

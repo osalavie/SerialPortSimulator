@@ -1,7 +1,10 @@
+using System.Globalization;
 using System.Text;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using SerialPortSimulator.Services;
 
 namespace SerialPortSimulator.Controls;
@@ -11,12 +14,14 @@ public sealed partial class DeviceTabView : UserControl
 {
     private readonly DataGenerator _generator = new();
     private readonly List<(DateTime Timestamp, string Data)> _dataRecords = new();
+    private readonly List<TextBox> _fixedTextInputs = new();
     private readonly DispatcherQueueTimer _lineStateTimer;
     private VirtualDeviceSession? _session;
     private CancellationTokenSource? _sendCancellation;
     private Task? _sendLoop;
     private SerialLineConfig? _lastAppliedConfig;
     private uint _protocolVersion;
+    private int _fixedTextIndex;
     private bool _initialized;
     private bool _shutdown;
     private bool _sendingOnce;
@@ -32,8 +37,9 @@ public sealed partial class DeviceTabView : UserControl
         _lineStateTimer = DispatcherQueue.GetForCurrentThread().CreateTimer();
         _lineStateTimer.Interval = TimeSpan.FromMilliseconds(300);
         _lineStateTimer.Tick += (_, _) => UpdateBusinessLineState();
+        AddFixedTextRow();
         _initialized = true;
-        UpdateTemplateLabel();
+        UpdateModePanels();
         UpdateInjectionTargetText();
         UpdateBusinessLineState();
         UpdateControls();
@@ -78,7 +84,7 @@ public sealed partial class DeviceTabView : UserControl
         {
             _refreshingLanguage = false;
         }
-        UpdateTemplateLabel();
+        UpdateModePanels();
         UpdateInjectionTargetText();
         LoadSerialConfig();
         UpdateBusinessLineState();
@@ -355,20 +361,166 @@ public sealed partial class DeviceTabView : UserControl
 
     private void ModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (TemplateLabel is null || _refreshingLanguage) return;
-        bool fixedText = ModeCombo.SelectedIndex == (int)DataMode.Fixed;
-        UpdateTemplateLabel();
-        if (fixedText && TemplateBox.Text == "{timestamp},{counter},{value}")
-            TemplateBox.Text = "模拟设备数据";
-        else if (!fixedText && TemplateBox.Text == "模拟设备数据")
-            TemplateBox.Text = "{timestamp},{counter},{value}";
+        if (!_initialized || _refreshingLanguage) return;
+        if (GetSelectedMode() == DataMode.Fixed) _fixedTextIndex = 0;
+        UpdateModePanels();
     }
 
-    private void UpdateTemplateLabel()
+    private DataMode GetSelectedMode() =>
+        ModeCombo.SelectedIndex >= 0 ? (DataMode)ModeCombo.SelectedIndex : DataMode.Fixed;
+
+    private void UpdateModePanels()
     {
-        bool fixedText = ModeCombo.SelectedIndex == (int)DataMode.Fixed;
-        TemplateLabel.Text = fixedText ? UiLanguage.Text("固定文本", "Fixed text") : UiLanguage.Text("消息模板", "Message format");
-        TemplateHint.Visibility = fixedText ? Visibility.Collapsed : Visibility.Visible;
+        var mode = GetSelectedMode();
+        bool fixedMode = mode == DataMode.Fixed;
+        SineParameterRow.Visibility = mode == DataMode.Sine ? Visibility.Visible : Visibility.Collapsed;
+        RandomParameterRow.Visibility = mode == DataMode.Random ? Visibility.Visible : Visibility.Collapsed;
+        TemplatePanel.Visibility = fixedMode ? Visibility.Collapsed : Visibility.Visible;
+        FixedTextPanel.Visibility = fixedMode ? Visibility.Visible : Visibility.Collapsed;
+        ResetButton.Visibility = mode == DataMode.Counter ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void AddFixedTextButton_Click(object sender, RoutedEventArgs e) => AddFixedTextRow(focus: true);
+
+    private void AddFixedTextRow(string text = "", bool focus = false)
+    {
+        var row = new Grid { ColumnSpacing = 8 };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var box = new TextBox
+        {
+            Text = text,
+            TextWrapping = TextWrapping.NoWrap,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        UiText.SetKey(box, "FixedTextPlaceholder");
+        box.Loaded += (_, _) => RemoveClearButton(box);
+
+        var delete = new Button
+        {
+            Padding = new Thickness(8, 4, 8, 4),
+            VerticalAlignment = VerticalAlignment.Center,
+            Content = new FontIcon { Glyph = "\uE711", FontSize = 12 }
+        };
+        UiText.SetTip(delete, "DeleteText");
+        AutomationProperties.SetName(delete, UiLanguage.Get("DeleteText"));
+        delete.Click += (_, _) => RemoveFixedTextRow(row, box);
+
+        Grid.SetColumn(delete, 1);
+        row.Children.Add(box);
+        row.Children.Add(delete);
+        _fixedTextInputs.Add(box);
+        FixedTextList.Children.Add(row);
+        if (focus) box.Focus(FocusState.Programmatic);
+    }
+
+    private void RemoveFixedTextRow(Grid row, TextBox box)
+    {
+        _fixedTextInputs.Remove(box);
+        FixedTextList.Children.Remove(row);
+        if (_fixedTextInputs.Count == 0) AddFixedTextRow();
+    }
+
+    private static void RemoveClearButton(TextBox box)
+    {
+        if (FindDescendant(box, "DeleteButton") is not Button clear) return;
+        if (clear.Parent is Panel panel)
+        {
+            panel.Children.Remove(clear);
+            return;
+        }
+        clear.Visibility = Visibility.Collapsed;
+        clear.Width = 0;
+        clear.MinWidth = 0;
+        clear.Padding = new Thickness(0);
+        clear.IsHitTestVisible = false;
+    }
+
+    private static FrameworkElement? FindDescendant(DependencyObject root, string name)
+    {
+        int count = VisualTreeHelper.GetChildrenCount(root);
+        for (int index = 0; index < count; index++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(root, index);
+            if (child is FrameworkElement element && element.Name == name) return element;
+            if (FindDescendant(child, name) is { } found) return found;
+        }
+        return null;
+    }
+
+    private List<string> GetFixedTexts() =>
+        _fixedTextInputs
+            .Select(box => box.Text)
+            .Where(text => !string.IsNullOrWhiteSpace(text))
+            .ToList();
+
+    private string NextFixedText()
+    {
+        var texts = GetFixedTexts();
+        if (texts.Count == 0)
+            throw new InvalidOperationException(UiLanguage.Text("固定文本列表为空，请先添加要发送的文本。", "Add at least one fixed text before sending."));
+        if (_fixedTextIndex >= texts.Count) _fixedTextIndex = 0;
+        string text = texts[_fixedTextIndex];
+        if (_fixedTextIndex < texts.Count - 1) _fixedTextIndex++;
+        else if (LoopFixedTextCheck.IsChecked == true) _fixedTextIndex = 0;
+        return text;
+    }
+
+    private bool TryPrepareSending(out string? error)
+    {
+        error = null;
+        if (GetSelectedMode() == DataMode.Fixed)
+        {
+            if (GetFixedTexts().Count > 0) return true;
+            error = UiLanguage.Text("固定文本列表为空，请先添加要发送的文本。", "Add at least one fixed text before sending.");
+            return false;
+        }
+
+        try
+        {
+            ApplySimulationSettings();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            return false;
+        }
+    }
+
+    private void ApplySimulationSettings()
+    {
+        switch (GetSelectedMode())
+        {
+            case DataMode.Sine:
+                _generator.SineAmplitude = ParseNumber(SineAmplitudeBox.Text, UiLanguage.Text("幅值", "Amplitude"));
+                double period = ParseNumber(SinePeriodBox.Text, UiLanguage.Text("周期", "Period"));
+                if (period <= 0)
+                    throw new ArgumentException(UiLanguage.Text("周期必须大于 0。", "The period must be greater than zero."));
+                _generator.SinePeriod = period;
+                _generator.SineOffset = ParseNumber(SineOffsetBox.Text, UiLanguage.Text("偏移", "Offset"));
+                break;
+            case DataMode.Random:
+                double minimum = ParseNumber(RandomMinimumBox.Text, UiLanguage.Text("最小值", "Minimum"));
+                double maximum = ParseNumber(RandomMaximumBox.Text, UiLanguage.Text("最大值", "Maximum"));
+                if (minimum > maximum)
+                    throw new ArgumentException(UiLanguage.Text("最小值不能大于最大值。", "Minimum must not exceed maximum."));
+                if (!int.TryParse(RandomPrecisionBox.Text, out int precision) || precision is < 0 or > 6)
+                    throw new ArgumentException(UiLanguage.Text("精确度须为 0 到 6 的整数。", "Decimals must be an integer from 0 to 6."));
+                _generator.RandomMinimum = minimum;
+                _generator.RandomMaximum = maximum;
+                _generator.RandomPrecision = precision;
+                break;
+        }
+    }
+
+    private static double ParseNumber(string text, string label)
+    {
+        if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out double value) &&
+            double.IsFinite(value))
+            return value;
+        throw new ArgumentException(UiLanguage.Text($"{label}必须是数字。", $"{label} must be a number."));
     }
 
     private void UpdateInjectionTargetText() =>
@@ -379,6 +531,12 @@ public sealed partial class DeviceTabView : UserControl
     private void StartButton_Click(object sender, RoutedEventArgs e)
     {
         if (!TryGetInterval(out int interval)) return;
+        if (!TryPrepareSending(out string? error))
+        {
+            StatusChanged?.Invoke(error!, true);
+            return;
+        }
+        if (GetSelectedMode() == DataMode.Fixed) _fixedTextIndex = 0;
         _sendCancellation = new CancellationTokenSource();
         _sendLoop = SendLoopAsync(interval, _sendCancellation.Token);
         UpdateControls();
@@ -449,7 +607,17 @@ public sealed partial class DeviceTabView : UserControl
     {
         VirtualDeviceSession session = _session ??
             throw new InvalidOperationException(UiLanguage.Text("控制通道尚未打开。", "Open the control link first."));
-        string data = _generator.Next((DataMode)ModeCombo.SelectedIndex, TemplateBox.Text);
+        var mode = GetSelectedMode();
+        string data;
+        if (mode == DataMode.Fixed)
+        {
+            data = NextFixedText();
+        }
+        else
+        {
+            ApplySimulationSettings();
+            data = _generator.Next(mode, TemplateBox.Text);
+        }
         data += LineEndingCombo.SelectedIndex switch
         {
             1 => "\r\n",
@@ -476,6 +644,7 @@ public sealed partial class DeviceTabView : UserControl
 
     private void ResetButton_Click(object sender, RoutedEventArgs e)
     {
+        if (GetSelectedMode() != DataMode.Counter) return;
         _generator.Reset();
         AppendLog(UiLanguage.Text("计数器已重置", "Count reset"));
     }

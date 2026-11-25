@@ -167,7 +167,7 @@
                             <ComboBox
                                 x:Name="ModeCombo"
                                 HorizontalAlignment="Stretch"
-                                SelectedIndex="0"
+                                SelectedIndex="3"
                                 SelectionChanged="ModeCombo_SelectionChanged">
                                 <ComboBoxItem ui:UiText.Key="Counter" />
                                 <ComboBoxItem ui:UiText.Key="SineWave" />
@@ -180,8 +180,46 @@
                             <TextBox x:Name="IntervalBox" Text="1000" InputScope="Number" />
                         </StackPanel>
                     </Grid>
-                    <StackPanel Spacing="5">
-                        <TextBlock x:Name="TemplateLabel" />
+                    <Grid x:Name="SineParameterRow" ColumnSpacing="10" Visibility="Collapsed">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="5">
+                            <TextBlock ui:UiText.Key="Amplitude" />
+                            <TextBox x:Name="SineAmplitudeBox" Text="100" InputScope="Number" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="5">
+                            <TextBlock ui:UiText.Key="Period" ui:UiText.Tip="PeriodHelp" />
+                            <TextBox x:Name="SinePeriodBox" Text="20" InputScope="Number" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Spacing="5">
+                            <TextBlock ui:UiText.Key="Offset" />
+                            <TextBox x:Name="SineOffsetBox" Text="0" InputScope="Number" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid x:Name="RandomParameterRow" ColumnSpacing="10" Visibility="Collapsed">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Spacing="5">
+                            <TextBlock ui:UiText.Key="MinValue" />
+                            <TextBox x:Name="RandomMinimumBox" Text="0" InputScope="Number" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Spacing="5">
+                            <TextBlock ui:UiText.Key="MaxValue" />
+                            <TextBox x:Name="RandomMaximumBox" Text="100" InputScope="Number" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Spacing="5">
+                            <TextBlock ui:UiText.Key="Precision" />
+                            <TextBox x:Name="RandomPrecisionBox" Text="2" InputScope="Number" />
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel x:Name="TemplatePanel" Spacing="5">
+                        <TextBlock x:Name="TemplateLabel" ui:UiText.Key="MessageFormat" />
                         <TextBox
                             x:Name="TemplateBox"
                             Text="{}{timestamp},{counter},{value}"
@@ -196,6 +234,41 @@
                             Opacity="0.7"
                             FontSize="12" />
                     </StackPanel>
+                    <StackPanel x:Name="FixedTextPanel" Spacing="6">
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock ui:UiText.Key="FixedText" VerticalAlignment="Center" />
+                            <Button
+                                x:Name="AddFixedTextButton"
+                                Grid.Column="1"
+                                Click="AddFixedTextButton_Click">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE710;" FontSize="12" />
+                                    <TextBlock ui:UiText.Key="AddText" />
+                                </StackPanel>
+                            </Button>
+                            <CheckBox
+                                x:Name="LoopFixedTextCheck"
+                                Grid.Column="2"
+                                VerticalAlignment="Center"
+                                ui:UiText.Key="LoopSending" />
+                        </Grid>
+                        <ScrollViewer
+                            MaxHeight="108"
+                            VerticalScrollBarVisibility="Auto"
+                            HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel x:Name="FixedTextList" Spacing="6" />
+                        </ScrollViewer>
+                        <TextBlock
+                            ui:UiText.Key="FixedTextHelp"
+                            Opacity="0.7"
+                            FontSize="12"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <TextBlock ui:UiText.Key="LineEnding" VerticalAlignment="Center" />
                         <ComboBox x:Name="LineEndingCombo" Width="145" SelectedIndex="1">
@@ -209,7 +282,7 @@
                         <Button x:Name="StartButton" ui:UiText.Key="StartSending" Click="StartButton_Click" IsEnabled="False" />
                         <Button x:Name="StopButton" ui:UiText.Key="Stop" Click="StopButton_Click" IsEnabled="False" />
                         <Button x:Name="SendOnceButton" ui:UiText.Key="SendOnce" Click="SendOnceButton_Click" IsEnabled="False" />
-                        <Button x:Name="ResetButton" ui:UiText.Key="ResetCount" Click="ResetButton_Click" />
+                        <Button x:Name="ResetButton" ui:UiText.Key="ResetCount" Click="ResetButton_Click" Visibility="Collapsed" />
                     </StackPanel>
                 </StackPanel>
             </Border>
