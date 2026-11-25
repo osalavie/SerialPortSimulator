@@ -16,8 +16,7 @@ public sealed class VirtualDeviceSession : IDisposable
         Device = device;
         _client = new VirtualDeviceClient(device.InterfacePath);
         _responder = new RequestResponder();
-        foreach (var rule in rules)
-            _responder.SetRule(rule.Key, rule.Value);
+        _responder.SetRules(rules);
 
         _receiveLoop = ReceiveLoopAsync(_cancellation.Token);
     }
@@ -39,6 +38,8 @@ public sealed class VirtualDeviceSession : IDisposable
     }
 
     public void Inject(string text) => Inject(Encoding.UTF8.GetBytes(text));
+
+    public void UpdateRules(IEnumerable<KeyValuePair<string, string>> rules) => _responder.SetRules(rules);
 
     public SerialLineConfig GetSerialConfig() => _client.GetSerialConfig();
     public void SetSerialConfig(SerialLineConfig config) => _client.SetSerialConfig(config);

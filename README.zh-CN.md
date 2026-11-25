@@ -7,9 +7,9 @@
 ## 使用发行版
 
 1. 从 [GitHub Releases](https://github.com/osalavie/SerialPortSimulator/releases/latest) 下载 Windows x64 ZIP，完整解压到可写目录。
-2. 打开 `SerialPortSimulator.exe`，在「虚拟设备」页点击「新建设备」，确认 Windows 管理员提示。随包驱动使用测试签名，目标 Windows 需允许安装该驱动。
+2. 打开 `SerialPortSimulator.exe`。若未发现虚拟设备，程序会自动请求创建；也可以点击设备标签栏末尾的「新建设备」，确认 Windows 管理员提示。随包驱动使用测试签名，目标 Windows 需允许安装该驱动。
 3. 打开 `TestClient\SerialPortSimulator.TestClient.exe`，选择刚创建的 COM 口，按模拟器设置填写串口参数，再点击「打开端口」。
-4. 在模拟器的「模拟与收发」页发送一段文本，检查测试客户端是否收到。
+4. 在模拟器对应的设备标签页打开控制通道，用「模拟数据」卡片发送一段文本，检查测试客户端是否收到。关闭设备标签页并确认即可删除该虚拟设备。
 
 ## 从源码构建
 

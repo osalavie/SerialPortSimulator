@@ -7,9 +7,9 @@ A Windows x64 tool for creating virtual COM ports, sending simulated data, and a
 ## Use a release
 
 1. Download the Windows x64 ZIP from [GitHub Releases](https://github.com/osalavie/SerialPortSimulator/releases/latest) and extract it to a writable folder.
-2. Run `SerialPortSimulator.exe`. On the **Virtual Devices** tab (虚拟设备), click **New Device** (新建设备) and approve the Windows administrator prompt. The bundled driver is test-signed, so Windows must allow its installation.
+2. Run `SerialPortSimulator.exe`. If no virtual device exists, the app requests one automatically; you can also click **New Device** (新建设备) at the end of the device tab strip and approve the Windows administrator prompt. The bundled driver is test-signed, so Windows must allow its installation.
 3. Run `TestClient\SerialPortSimulator.TestClient.exe`, select the new COM port, match the simulator's serial settings, and click **Open Port** (打开端口).
-4. On the simulator's **Simulation** tab (模拟与收发), send some text and check that it appears in the test client.
+4. On that device's tab in the simulator, open the control link, send some text with the **Simulated data** card, and check that it appears in the test client. Close the device tab and confirm to remove the virtual device.
 
 ## Build from source
 
