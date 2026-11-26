@@ -1,6 +1,7 @@
 # SerialPortSimulator
 
 [简体中文](README.zh-CN.md)
+<img width="1024" height="784" alt="Snipaste_2026-11-26_11-21-05" src="https://github.com/user-attachments/assets/db2e1468-3233-4156-8925-7463b3e2fa39" />
 
 A Windows x64 tool for creating virtual COM ports, sending simulated data, and automatically replying to serial requests. It includes a test client for checking communication without physical hardware.
 
