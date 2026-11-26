@@ -1,6 +1,7 @@
 # 串口设备模拟器
 
 [English](README.md)
+<img width="1023" height="778" alt="Snipaste_2026-11-26_11-20-49" src="https://github.com/user-attachments/assets/b265d51a-aaa8-463d-ac06-402e8896eb7a" />
 
 在 Windows x64 上创建虚拟 COM 端口、发送模拟数据并自动回复串口请求。附带测试客户端，无需实体串口设备即可联调。
 
