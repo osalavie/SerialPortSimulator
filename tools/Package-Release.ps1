@@ -5,6 +5,11 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$appVersion = $Version.TrimStart('v', 'V')
+$appVersionParts = $appVersion.Split('.')
+if ($appVersionParts.Count -lt 3) {
+    $appVersion += '.0' * (3 - $appVersionParts.Count)
+}
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $distRoot = Join-Path $repoRoot 'dist'
 $packageName = "SerialPortSimulator-$Version-win-x64"
@@ -53,6 +58,7 @@ dotnet publish (Join-Path $repoRoot 'SerialPortSimulator\SerialPortSimulator.csp
     --self-contained true `
     @restoreOption `
     -p:Platform=x64 `
+    -p:Version=$appVersion `
     -p:PublishSingleFile=true `
     -p:IncludeNativeLibrariesForSelfExtract=true `
     -p:EnableCompressionInSingleFile=true `
@@ -67,6 +73,7 @@ dotnet publish (Join-Path $repoRoot 'DeviceManager\SerialPortSimulator.DeviceMan
     --self-contained true `
     @restoreOption `
     -p:Platform=x64 `
+    -p:Version=$appVersion `
     -p:PublishSingleFile=true `
     -p:IncludeNativeLibrariesForSelfExtract=true `
     -p:EnableCompressionInSingleFile=true `
@@ -82,6 +89,7 @@ dotnet publish (Join-Path $repoRoot 'TestClient\SerialPortSimulator.TestClient.c
     -r win-x64 `
     --self-contained true `
     @restoreOption `
+    -p:Version=$appVersion `
     -p:PublishSingleFile=true `
     -p:IncludeNativeLibrariesForSelfExtract=true `
     -p:EnableCompressionInSingleFile=true `
