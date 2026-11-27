@@ -40,6 +40,8 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
         Title = UiLanguage.Get("ClientTitle");
+        string iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico");
+        if (File.Exists(iconPath)) AppWindow.SetIcon(iconPath);
         TitleBarChrome.Attach(this, TitleBarRoot, TitleBarDragRegion, CaptionInsetColumn);
         AutomationProperties.SetName(LanguageButton, UiLanguage.Get("SwitchLanguage"));
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
