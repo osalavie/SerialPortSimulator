@@ -23,6 +23,12 @@ Environment:
 // Set ring buffer size
 #define DATA_BUFFER_SIZE 65536
 
+// Pending read requests the driver holds directly instead of a manual WDF
+// queue. UMDF rejects WdfRequestForwardToIoQueue on this path with
+// STATUS_DEVICE_BUSY, so reads wait in this list and are completed by the
+// line pump when data arrives.
+#define MAX_PENDING_READS 8
+
 //
 // Device states
 //
@@ -79,6 +85,10 @@ typedef struct _QUEUE_CONTEXT
     WDFQUEUE        ReadQueue;          // Manual queue for pending reads
 
     WDFQUEUE        WaitMaskQueue;      // Manual queue for pending ioctl wait-on-mask
+
+    WDFWAITLOCK     PendingReadsLock;
+    WDFREQUEST      PendingReads[MAX_PENDING_READS];
+    ULONG           PendingReadCount;
 
     PDEVICE_CONTEXT DeviceContext;
 

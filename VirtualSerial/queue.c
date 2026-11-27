@@ -40,14 +40,113 @@ QueueSignalRxChar(
 static VOID QueuePumpLine(_In_ PQUEUE_CONTEXT QueueContext);
 
 static VOID
+QueueRemovePendingReadLocked(
+    _In_ PQUEUE_CONTEXT QueueContext,
+    _In_ WDFREQUEST Request
+    )
+{
+    ULONG index;
+    for (index = 0; index < QueueContext->PendingReadCount; index++) {
+        if (QueueContext->PendingReads[index] == Request) {
+            ULONG move;
+            for (move = index + 1; move < QueueContext->PendingReadCount; move++) {
+                QueueContext->PendingReads[move - 1] = QueueContext->PendingReads[move];
+            }
+            QueueContext->PendingReadCount--;
+            return;
+        }
+    }
+}
+
+static WDFREQUEST
+QueueTakePendingRead(
+    _In_ PQUEUE_CONTEXT QueueContext
+    )
+{
+    WDFREQUEST request = NULL;
+    ULONG index;
+
+    WdfWaitLockAcquire(QueueContext->PendingReadsLock, NULL);
+    if (QueueContext->PendingReadCount > 0) {
+        request = QueueContext->PendingReads[0];
+        for (index = 1; index < QueueContext->PendingReadCount; index++) {
+            QueueContext->PendingReads[index - 1] = QueueContext->PendingReads[index];
+        }
+        QueueContext->PendingReadCount--;
+    }
+    WdfWaitLockRelease(QueueContext->PendingReadsLock);
+    return request;
+}
+
+static VOID
+QueueEvtReadCancel(
+    _In_ WDFREQUEST Request
+    )
+{
+    WDFQUEUE queue = WdfRequestGetIoQueue(Request);
+    if (queue != NULL) {
+        PQUEUE_CONTEXT queueContext = GetQueueContext(queue);
+        WdfWaitLockAcquire(queueContext->PendingReadsLock, NULL);
+        QueueRemovePendingReadLocked(queueContext, Request);
+        WdfWaitLockRelease(queueContext->PendingReadsLock);
+    }
+    WdfRequestComplete(Request, STATUS_CANCELLED);
+}
+
+static VOID
+QueueServePendingReads(_In_ PQUEUE_CONTEXT QueueContext)
+{
+    for (;;) {
+        WDFREQUEST request;
+        WDFMEMORY memory;
+        PVOID buffer;
+        size_t bufferSize = 0;
+        size_t bytesCopied = 0;
+        size_t available = 0;
+        NTSTATUS status;
+
+        RingBufferGetAvailableData(&QueueContext->RingBuffer, &available);
+        if (available == 0) {
+            break;
+        }
+
+        request = QueueTakePendingRead(QueueContext);
+        if (request == NULL) {
+            break;
+        }
+
+        status = WdfRequestUnmarkCancelable(request);
+        if (!NT_SUCCESS(status)) {
+            // Canceled in flight: QueueEvtReadCancel already completed it.
+            continue;
+        }
+
+        status = WdfRequestRetrieveOutputMemory(request, &memory);
+        if (!NT_SUCCESS(status)) {
+            WdfRequestComplete(request, status);
+            continue;
+        }
+
+        buffer = WdfMemoryGetBuffer(memory, &bufferSize);
+        status = RingBufferRead(&QueueContext->RingBuffer, buffer, bufferSize, &bytesCopied);
+        if (!NT_SUCCESS(status)) {
+            WdfRequestComplete(request, status);
+            continue;
+        }
+
+        WdfRequestCompleteWithInformation(request, STATUS_SUCCESS, bytesCopied);
+        if (bytesCopied == 0) {
+            break;
+        }
+    }
+
+    QueueSignalRxChar(QueueContext);
+}
+
+static VOID
 QueueWakeReaders(_In_ PQUEUE_CONTEXT QueueContext)
 {
-    WDFREQUEST pending;
-    while (NT_SUCCESS(WdfIoQueueRetrieveNextRequest(QueueContext->ReadQueue, &pending))) {
-        NTSTATUS status = WdfRequestForwardToIoQueue(pending, QueueContext->Queue);
-        if (!NT_SUCCESS(status)) WdfRequestComplete(pending, status);
-    }
-    QueueSignalRxChar(QueueContext);
+    QueueServePendingReads(QueueContext);
 }
 
 // Credits use half-bit milliseconds: baud * elapsed_ms * 2.
@@ -132,6 +231,7 @@ QueueCreate(
     WDFDEVICE               device = DeviceContext->Device;
     WDF_IO_QUEUE_CONFIG     queueConfig;
     WDF_OBJECT_ATTRIBUTES   queueAttributes;
+    WDF_OBJECT_ATTRIBUTES   lockAttributes;
     WDF_TIMER_CONFIG        timerConfig;
     WDF_OBJECT_ATTRIBUTES   timerAttributes;
     WDFQUEUE                queue;
@@ -215,6 +315,16 @@ QueueCreate(
     }
 
     queueContext->WaitMaskQueue = queue;
+
+    queueContext->PendingReadCount = 0;
+    WDF_OBJECT_ATTRIBUTES_INIT(&lockAttributes);
+    lockAttributes.ParentObject = queueContext->Queue;
+    status = WdfWaitLockCreate(&lockAttributes, &queueContext->PendingReadsLock);
+    if (!NT_SUCCESS(status)) {
+        Trace(TRACE_LEVEL_ERROR,
+            "Error: WdfWaitLockCreate failed 0x%x", status);
+        return status;
+    }
 
     RingBufferInitialize(&queueContext->RingBuffer,
                             queueContext->Buffer,
@@ -902,13 +1012,26 @@ EvtIoRead(
     }
     else {
         //
-        // No data to read. Queue the request for later processing.
+        // No data to read. UMDF rejects forwarding this request to a manual
+        // queue (STATUS_DEVICE_BUSY -> ERROR_BUSY on the client), so the
+        // driver keeps the request itself and the line pump completes it
+        // once data arrives.
         //
-        status = WdfRequestForwardToIoQueue(Request,
-                            queueContext->ReadQueue);
-        if( !NT_SUCCESS(status) ) {
-            Trace(TRACE_LEVEL_ERROR,
-                "Error: WdfRequestForwardToIoQueue failed 0x%x", status);
+        WdfWaitLockAcquire(queueContext->PendingReadsLock, NULL);
+        if (queueContext->PendingReadCount >= MAX_PENDING_READS) {
+            WdfWaitLockRelease(queueContext->PendingReadsLock);
+            WdfRequestComplete(Request, STATUS_DEVICE_BUSY);
+            return;
+        }
+
+        queueContext->PendingReads[queueContext->PendingReadCount++] = Request;
+        status = WdfRequestMarkCancelableEx(Request, QueueEvtReadCancel);
+        if (!NT_SUCCESS(status)) {
+            QueueRemovePendingReadLocked(queueContext, Request);
+        }
+        WdfWaitLockRelease(queueContext->PendingReadsLock);
+
+        if (!NT_SUCCESS(status)) {
             WdfRequestComplete(Request, status);
         }
     }
